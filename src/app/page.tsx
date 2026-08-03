@@ -1,65 +1,112 @@
-import Image from "next/image";
+import { RecipeCard } from "@/components/RecipeCard";
+import { MOCK_RECIPES } from "@/lib/mock-data";
+import { TrendingUp, Compass, Flame, Leaf, Cake, Coffee, Globe, Soup, Beef, Fish } from "lucide-react";
 
-export default function Home() {
+const GENRES = [
+  { label: "Vegan",      icon: <Leaf className="w-5 h-5" />,        slug: "vegan" },
+  { label: "Baking",     icon: <Cake className="w-5 h-5" />,        slug: "baking" },
+  { label: "Quick",      icon: <Flame className="w-5 h-5" />,       slug: "quick" },
+  { label: "Breakfast",  icon: <Coffee className="w-5 h-5" />,      slug: "breakfast" },
+  { label: "Soups",      icon: <Soup className="w-5 h-5" />,        slug: "soups" },
+  { label: "Asian",      icon: <Fish className="w-5 h-5" />,        slug: "asian" },
+  { label: "BBQ",        icon: <Beef className="w-5 h-5" />,        slug: "bbq" },
+  { label: "World",      icon: <Globe className="w-5 h-5" />,       slug: "world" },
+];
+
+export default function HomePage() {
+  const trending = MOCK_RECIPES.slice(0, 3);
+  const discover = MOCK_RECIPES.slice(3);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen bg-background">
+      {/* ── Hero ──────────────────────────────────────────────────────────── */}
+      <section className="bg-[oklch(0.94_0.09_88)] dark:bg-yellow-subtle border-b border-border transition-colors duration-300">
+        <div className="max-w-[1280px] mx-auto px-4 py-16 text-center">
+          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-[1.1]">
+            Fork recipes.{" "}
+            <span className="text-yellow-brand">Cook together.</span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="mt-4 max-w-lg mx-auto text-base text-muted-foreground leading-relaxed">
+            Remix recipes, track every tweak, and send taste-test suggestions
+            back to the original cook.
           </p>
+
+          {/* ── CTAs ─────────────────────────────────────────────────────── */}
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <a
+              href="/explore"
+              className="inline-flex items-center justify-center h-10 px-6 rounded-lg bg-yellow-brand hover:bg-yellow-hover text-foreground font-medium text-sm transition-colors shadow-sm"
+            >
+              Explore recipes
+            </a>
+            <a
+              href="/new"
+              className="inline-flex items-center justify-center h-10 px-6 rounded-lg border border-border bg-background hover:bg-yellow-subtle dark:hover:bg-yellow-muted text-foreground font-medium text-sm transition-colors"
+            >
+              Add your first recipe
+            </a>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </section>
+
+      <div className="max-w-[1280px] mx-auto px-4 py-10 space-y-14">
+        {/* ── Genre categories ──────────────────────────────────────────────── */}
+        <section>
+          <SectionHeading icon={<Globe className="w-4 h-4 text-yellow-brand" />} title="Browse by category" />
+          <div className="mt-4 grid grid-cols-4 sm:grid-cols-8 gap-3">
+            {GENRES.map((g) => (
+              <a
+                key={g.slug}
+                href={`/explore?tag=${g.slug}`}
+                className="flex flex-col items-center gap-2 p-3 rounded-xl border border-border bg-card hover:border-yellow-brand hover:bg-yellow-subtle dark:hover:bg-yellow-muted transition-all duration-150 group"
+              >
+                <span className="text-muted-foreground group-hover:text-yellow-brand transition-colors">
+                  {g.icon}
+                </span>
+                <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+                  {g.label}
+                </span>
+              </a>
+            ))}
+          </div>
+        </section>
+
+        {/* ── Trending ──────────────────────────────────────────────────────── */}
+        <section>
+          <SectionHeading icon={<TrendingUp className="w-4 h-4 text-yellow-brand" />} title="Trending this week" />
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {trending.map((recipe) => (
+              <RecipeCard key={recipe.id} recipe={recipe} />
+            ))}
+          </div>
+        </section>
+
+        {/* ── Discover ──────────────────────────────────────────────────────── */}
+        <section>
+          <SectionHeading icon={<Compass className="w-4 h-4 text-yellow-brand" />} title="Discover more" />
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {discover.map((recipe) => (
+              <RecipeCard key={recipe.id} recipe={recipe} />
+            ))}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function SectionHeading({
+  icon,
+  title,
+}: {
+  icon: React.ReactNode;
+  title: string;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      {icon}
+      <h2 className="text-base font-semibold text-foreground">{title}</h2>
+      <div className="flex-1 h-px bg-border ml-2" />
     </div>
   );
 }

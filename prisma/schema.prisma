@@ -1,0 +1,440 @@
+// Forkable — Prisma Schema
+// Phase 2: Full data model for recipe version control platform
+// Run: npx prisma migrate dev --name init
+
+// Forkable — Prisma Schema
+// Phase 2: Full data model for recipe version control platform
+// Run: npx prisma migrate dev --name init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Neon: directUrl bypasses PgBouncer so prisma migrate works
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── NextAuth v5 required tables ─────────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Users ────────────────────────────────────────────────────────────────────
+
+model User {
+  id              String    @id @default(cuid())
+  username        String    @unique
+  displayName     String
+  email           String    @unique
+  emailVerified   DateTime?
+  passwordHash    String?   // null for OAuth-only accounts
+  avatarUrl       String?
+  bannerUrl       String?
+  bio             String?
+  location        String?
+  websiteUrl      String?
+  twitterHandle   String?
+  instagramHandle String?
+  githubHandle    String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Taste profile (set during onboarding)
+  cuisineTags String[] @default([])
+  dietaryTags String[] @default([])
+  styleTags   String[] @default([])
+  themePreference String @default("dark")
+
+  // NextAuth relations
+  accounts Account[]
+  sessions Session[]
+
+  // Forkable relations
+  recipes   Recipe[]
+  stars     Star[]
+  forks     Fork[]
+  cookbooks Cookbook[]
+  tasteTests TasteTest[]
+  notifications  Notification[] @relation("NotifRecipient")
+  notifTriggered Notification[] @relation("NotifActor")
+  followers Follow[] @relation("FollowedUser")
+  following Follow[] @relation("FollowingUser")
+  tweaks    RecipeVersion[]
+
+  @@index([username])
+  @@index([email])
+}
+
+// ─── Recipes ──────────────────────────────────────────────────────────────────
+
+model Recipe {
+  id          String   @id @default(cuid())
+  slug        String
+  name        String
+  description String   @db.Text
+  story       String?  @db.Text   // long-form README / markdown
+  imageUrl    String?             // R2 URL
+  isPublic    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Fork provenance
+  forkedFromId String?
+  forkedFrom   Recipe?  @relation("RecipeForks", fields: [forkedFromId], references: [id])
+  forks        Recipe[] @relation("RecipeForks")
+
+  // Ownership
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
+  // Denormalized counters (updated atomically in server actions)
+  starCount      Int @default(0)
+  forkCount      Int @default(0)
+  tweakCount     Int @default(0)
+  tasteTestCount Int @default(0)
+
+  // Macros (aggregated from ingredients, cached)
+  servings  Int    @default(4)
+  calories  Float?
+  proteinG  Float?
+  carbsG    Float?
+  fatG      Float?
+  fiberG    Float?
+
+  // Relations
+  versions        RecipeVersion[]
+  components      Component[]
+  tags            RecipeTag[]
+  stars           Star[]
+  forkRecords     Fork[]
+  cookbookEntries CookbookRecipe[]
+  tasteTests      TasteTest[]
+
+  @@unique([authorId, slug])
+  @@index([slug])
+  @@index([authorId])
+  @@index([isPublic, starCount])
+  @@index([isPublic, createdAt])
+  @@index([isPublic, updatedAt])
+}
+
+// ─── Recipe Versions (Tweaks / Commits) ──────────────────────────────────────
+
+model RecipeVersion {
+  id        String   @id @default(cuid())
+  recipeId  String
+  authorId  String
+  message   String   // "commit message" e.g. "Add splash of milk to finish"
+  additions Int      @default(0)
+  deletions Int      @default(0)
+  snapshot  Json?    // full recipe snapshot at this point
+  createdAt DateTime @default(now())
+
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id])
+
+  @@index([recipeId, createdAt])
+  @@index([authorId])
+}
+
+// ─── Components (Folders + Files) ────────────────────────────────────────────
+
+model Component {
+  id          String        @id @default(cuid())
+  recipeId    String
+  name        String        // slug: "bolognese-sauce"
+  displayName String?       // human label: "Bolognese Sauce"
+  type        ComponentType @default(FOLDER)
+  order       Int           @default(0)
+  parentId    String?
+  updatedAt   DateTime      @updatedAt
+  lastTweak   String?
+
+  recipe   Recipe      @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  parent   Component?  @relation("ComponentTree", fields: [parentId], references: [id])
+  children Component[] @relation("ComponentTree")
+  steps       Step[]
+  ingredients ComponentIngredient[]
+
+  @@unique([recipeId, name, parentId])
+  @@index([recipeId])
+  @@index([parentId])
+}
+
+enum ComponentType {
+  FOLDER
+  FILE
+}
+
+// ─── Steps (Instructions) ────────────────────────────────────────────────────
+
+model Step {
+  id             String  @id @default(cuid())
+  componentId    String
+  order          Int
+  content        String  @db.Text  // markdown
+  parentStepId   String?
+  linkedRecipeId String? // cross-link to sub-recipe
+
+  component    Component @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  parentStep   Step?     @relation("StepTree", fields: [parentStepId], references: [id])
+  subSteps     Step[]    @relation("StepTree")
+
+  @@index([componentId, order])
+}
+
+// ─── Ingredient Catalog ───────────────────────────────────────────────────────
+
+model Ingredient {
+  id          String  @id @default(cuid())
+  slug        String  @unique
+  name        String
+  aliases     String[] @default([])
+
+  // Macros per 100g
+  calories    Float?
+  protein     Float?
+  carbs       Float?
+  fat         Float?
+  fiber       Float?
+  macroSource MacroSource @default(MANUAL)
+  offId       String? // OpenFoodFacts product ID
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  usages ComponentIngredient[]
+
+  @@index([name])
+  @@index([slug])
+}
+
+enum MacroSource {
+  OPEN_FOOD_FACTS
+  MANUAL
+  ESTIMATED
+}
+
+model ComponentIngredient {
+  id           String  @id @default(cuid())
+  componentId  String
+  ingredientId String
+  amount       Float?
+  unit         String? // "g" | "ml" | "tbsp" | "cloves" etc.
+  preparation  String? // "finely diced", "room temperature"
+  order        Int     @default(0)
+  isOptional   Boolean @default(false)
+
+  component  Component  @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@index([componentId])
+  @@index([ingredientId])
+}
+
+// ─── Social ───────────────────────────────────────────────────────────────────
+
+model Star {
+  userId    String
+  recipeId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, recipeId])
+  @@index([recipeId])
+  @@index([userId])
+}
+
+model Fork {
+  id        String   @id @default(cuid())
+  userId    String   // who forked
+  recipeId  String   // the new forked recipe
+  sourceId  String   // the original recipe
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sourceId])
+  @@index([sourceId])
+}
+
+model Follow {
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("FollowingUser", fields: [followerId],  references: [id], onDelete: Cascade)
+  following User @relation("FollowedUser",  fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+// ─── Cookbooks ────────────────────────────────────────────────────────────────
+
+model Cookbook {
+  id          String   @id @default(cuid())
+  slug        String
+  name        String
+  description String?  @db.Text
+  coverUrl    String?
+  isPublic    Boolean  @default(true)
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner   User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  recipes CookbookRecipe[]
+
+  @@unique([ownerId, slug])
+  @@index([ownerId])
+}
+
+model CookbookRecipe {
+  cookbookId String
+  recipeId   String
+  order      Int      @default(0)
+  addedAt    DateTime @default(now())
+
+  cookbook Cookbook @relation(fields: [cookbookId], references: [id], onDelete: Cascade)
+  recipe   Recipe   @relation(fields: [recipeId],   references: [id], onDelete: Cascade)
+
+  @@id([cookbookId, recipeId])
+  @@index([cookbookId, order])
+}
+
+// ─── Taste Tests (Comments + PR-style Suggestions) ───────────────────────────
+
+model TasteTest {
+  id       String          @id @default(cuid())
+  recipeId String
+  authorId String
+  type     TasteTestType   @default(COMMENT)
+  status   TasteTestStatus @default(OPEN)
+
+  // Comment fields
+  body   String? @db.Text
+  rating Int?    // 1–5 forks, null for suggestions
+
+  // Suggestion (PR) fields
+  title String?
+  diff  Json?   // [{ field, from, to }]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id])
+
+  @@index([recipeId, createdAt])
+  @@index([authorId])
+}
+
+enum TasteTestType {
+  COMMENT
+  SUGGESTION
+}
+
+enum TasteTestStatus {
+  OPEN
+  MERGED
+  CLOSED
+}
+
+// ─── Tags ─────────────────────────────────────────────────────────────────────
+
+model Tag {
+  id        String      @id @default(cuid())
+  name      String      @unique // lowercase slug
+  label     String               // display label
+  isGlobal  Boolean     @default(false)
+  useCount  Int         @default(0)
+  createdAt DateTime    @default(now())
+
+  recipes RecipeTag[]
+
+  @@index([name])
+  @@index([useCount])
+}
+
+model RecipeTag {
+  recipeId String
+  tagId    String
+
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId],    references: [id], onDelete: Cascade)
+
+  @@id([recipeId, tagId])
+  @@index([tagId])
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+model Notification {
+  id          String           @id @default(cuid())
+  recipientId String
+  actorId     String?
+  type        NotificationType
+  entityId    String?          // recipeId, tasteTestId, etc.
+  entityType  String?          // "Recipe" | "TasteTest" | "Follow"
+  read        Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+
+  recipient User  @relation("NotifRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor     User? @relation("NotifActor",     fields: [actorId],    references: [id])
+
+  @@index([recipientId, read, createdAt])
+}
+
+enum NotificationType {
+  NEW_STAR
+  NEW_FORK
+  NEW_FOLLOWER
+  NEW_TASTE_TEST
+  SUGGESTION_MERGED
+  SUGGESTION_CLOSED
+  MENTION
+}

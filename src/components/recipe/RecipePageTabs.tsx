@@ -1,0 +1,779 @@
+"use client";
+
+import { useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  BookOpen, GitCommitHorizontal, GitFork, ChefHat,
+  Star, Plus, GitMerge, X, Check, ChevronDown, ChevronUp,
+  Eye, Share2, Utensils, Copy, Pencil,
+} from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { FileTree } from "@/components/recipe/FileTree";
+import type { MockRecipe, MockTweak, MockTasteTest } from "@/lib/mock-data";
+
+type Tab = "recipe" | "tweaks" | "forks" | "taste-tests";
+
+interface Props {
+  recipe: MockRecipe;
+  tweaks: MockTweak[];
+  tasteTsts: MockTasteTest[];
+  forks: MockRecipe[];
+}
+
+export function RecipePageTabs({ recipe, tweaks, tasteTsts, forks }: Props) {
+  const [activeTab, setActiveTab] = useState<Tab>("recipe");
+  const [copied, setCopied] = useState(false);
+  const router = useRouter();
+  const owner = recipe.owner;
+
+  const tabs = [
+    { id: "recipe"      as Tab, icon: <BookOpen className="w-3.5 h-3.5" />,            label: "Recipe",      count: null },
+    { id: "tweaks"      as Tab, icon: <GitCommitHorizontal className="w-3.5 h-3.5" />, label: "Tweaks",      count: recipe.tweaks },
+    { id: "forks"       as Tab, icon: <GitFork className="w-3.5 h-3.5" />,             label: "Forks",       count: recipe.forks },
+    { id: "taste-tests" as Tab, icon: <ChefHat className="w-3.5 h-3.5" />,            label: "Taste Tests", count: recipe.tastings },
+  ];
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const shareOnX = () => {
+    const url = encodeURIComponent(window.location.href);
+    const text = encodeURIComponent(`Check out "${recipe.name}" on Forkable`);
+    window.open(`https://x.com/intent/tweet?url=${url}&text=${text}`, "_blank");
+  };
+
+  const shareOnWhatsApp = () => {
+    const text = encodeURIComponent(`Check out "${recipe.name}" on Forkable: ${window.location.href}`);
+    window.open(`https://wa.me/?text=${text}`, "_blank");
+  };
+
+  return (
+    <>
+      {/* ── Recipe header ─────────────────────────────────────────────────── */}
+      <div className="border-b border-border bg-card">
+        <div className="max-w-[1280px] mx-auto px-4 pt-6 pb-0">
+          {/* Breadcrumb */}
+          <div className="flex items-center gap-1.5 text-sm mb-3">
+            <Link
+              href={`/${owner.username}`}
+              className="flex items-center gap-1.5 text-foreground hover:text-yellow-brand font-medium transition-colors"
+            >
+              <Avatar className="h-5 w-5">
+                <AvatarImage src={owner.avatarUrl} />
+                <AvatarFallback className="text-[10px] bg-yellow-light">
+                  {owner.displayName[0]}
+                </AvatarFallback>
+              </Avatar>
+              {owner.username}
+            </Link>
+            <span className="text-muted-foreground">/</span>
+            <Link
+              href={`/${owner.username}/${recipe.slug}`}
+              className="font-semibold text-foreground hover:text-yellow-brand transition-colors"
+            >
+              {recipe.slug}
+            </Link>
+            <Badge
+              variant="outline"
+              className="ml-1 text-[11px] px-2 py-0 h-5 border-border text-muted-foreground font-normal"
+            >
+              Public
+            </Badge>
+            {recipe.forkedFrom && (
+              <span className="ml-2 text-xs text-muted-foreground flex items-center gap-1">
+                <GitFork className="w-3 h-3" />
+                forked from{" "}
+                <Link
+                  href={`/${recipe.forkedFrom.owner}/${recipe.forkedFrom.recipe}`}
+                  className="hover:text-yellow-brand hover:underline transition-colors"
+                >
+                  {recipe.forkedFrom.owner}/{recipe.forkedFrom.recipe}
+                </Link>
+              </span>
+            )}
+          </div>
+
+          {/* Action bar */}
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <ActionButton icon={<Eye className="w-3.5 h-3.5" />} label="Watch" count={42} />
+            <ActionButton
+              icon={<Star className="w-3.5 h-3.5" />}
+              label="Star"
+              count={recipe.stars}
+              highlight
+            />
+            <ActionButton
+              icon={<GitFork className="w-3.5 h-3.5" />}
+              label="Fork"
+              count={recipe.forks}
+            />
+
+            <div className="ml-auto flex items-center gap-2">
+              {/* Share dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-border bg-card hover:bg-muted text-xs font-medium text-foreground transition-colors outline-none">
+                  <Share2 className="w-3.5 h-3.5" />
+                  Share
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={handleCopyLink}>
+                    <Copy className="w-3.5 h-3.5 mr-2 shrink-0" />
+                    {copied ? "Copied!" : "Copy link"}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={shareOnX}>
+                    <span className="mr-2 font-bold text-xs w-3.5 shrink-0">𝕏</span>
+                    Share on X
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={shareOnWhatsApp}>
+                    <span className="mr-2 text-sm w-3.5 shrink-0">💬</span>
+                    Share on WhatsApp
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <span className="mr-2 text-sm w-3.5 shrink-0">📸</span>
+                    Share on Instagram
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Edit button — only for the recipe owner (shrey in Phase 1) */}
+              {owner.username === "shrey" && (
+                <button
+                  onClick={() => router.push(`/${owner.username}/${recipe.slug}/edit`)}
+                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-border bg-card hover:bg-muted text-xs font-medium text-foreground transition-colors"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  Edit
+                </button>
+              )}
+
+              {/* Cook Mode */}
+              <button
+                onClick={() => router.push(`/${owner.username}/${recipe.slug}/cook`)}
+                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-yellow-brand hover:bg-yellow-hover text-[oklch(0.12_0_0)] text-xs font-medium transition-colors"
+              >
+                <Utensils className="w-3.5 h-3.5" />
+                Cook Mode
+              </button>
+            </div>
+          </div>
+
+          {/* Tab bar */}
+          <div className="flex -mb-px">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm border-b-2 transition-colors ${
+                  activeTab === tab.id
+                    ? "border-yellow-brand text-foreground font-medium"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-yellow-brand/40"
+                }`}
+              >
+                {tab.icon}
+                {tab.label}
+                {tab.count !== null && (
+                  <span className="ml-1 px-1.5 py-0.5 rounded-full bg-muted text-[10px] font-medium text-muted-foreground">
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Tab content ─────────────────────────────────────────────────────── */}
+      <div className="max-w-[1280px] mx-auto px-4 py-6">
+        <div className="flex gap-6">
+          {/* Main column */}
+          <div className="flex-1 min-w-0 space-y-4">
+
+            {/* ── RECIPE TAB ──────────────────────────────────────────────── */}
+            {activeTab === "recipe" && (
+              <>
+                {/* Branch selector row */}
+                <div className="flex items-center gap-2 text-sm">
+                  <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border bg-card hover:bg-muted text-sm font-medium transition-colors">
+                    <span className="text-xs text-muted-foreground mr-1">branch:</span>
+                    main
+                    <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                  </button>
+                  <span className="text-muted-foreground text-xs">
+                    <span className="font-medium text-foreground">{tweaks.length}</span> tweaks
+                  </span>
+                  <span className="text-muted-foreground text-xs">·</span>
+                  <span className="text-muted-foreground text-xs">
+                    Latest: <span className="text-foreground">{tweaks[0]?.message}</span>
+                  </span>
+                </div>
+
+                {recipe.components.length > 0 && (
+                  <FileTree
+                    items={recipe.components}
+                    recipe={recipe}
+                  />
+                )}
+
+                {/* README */}
+                <SectionFile icon={<BookOpen className="w-3.5 h-3.5" />} filename="README.md">
+                  <div className="relative h-52 rounded-lg overflow-hidden mb-5 bg-muted">
+                    <Image
+                      src={recipe.imageUrl}
+                      alt={recipe.name}
+                      fill
+                      className="object-cover"
+                      sizes="800px"
+                    />
+                  </div>
+                  <h2 className="text-xl font-bold text-foreground mb-2">{recipe.name}</h2>
+                  <p className="text-muted-foreground leading-relaxed">{recipe.description}</p>
+                  <div className="mt-4 flex flex-wrap gap-1.5">
+                    {recipe.tags.map((tag) => (
+                      <Badge
+                        key={tag}
+                        variant="secondary"
+                        className="bg-yellow-muted text-foreground/70 border-0 text-xs font-normal"
+                      >
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                </SectionFile>
+
+                {/* Instructions */}
+                {recipe.instructions.length > 0 && (
+                  <SectionFile
+                    icon={<ChefHat className="w-3.5 h-3.5" />}
+                    filename="instructions.md"
+                  >
+                    <ol className="space-y-4">
+                      {recipe.instructions.map((s) => (
+                        <li key={s.step} className="flex gap-4">
+                          <span className="shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-yellow-brand text-[oklch(0.12_0_0)] text-xs font-bold mt-0.5">
+                            {s.step}
+                          </span>
+                          <p className="text-sm text-foreground leading-relaxed">{s.text}</p>
+                        </li>
+                      ))}
+                    </ol>
+                  </SectionFile>
+                )}
+
+                {/* Macros */}
+                <SectionFile
+                  icon={<span className="text-xs">⚡</span>}
+                  filename="macros.json"
+                  rightSlot={
+                    <span className="text-[11px] text-muted-foreground">
+                      per serving · {recipe.macros.servings} servings
+                    </span>
+                  }
+                >
+                  <div className="grid grid-cols-5 divide-x divide-border -mx-6">
+                    {[
+                      { label: "Calories", value: recipe.macros.calories, unit: "kcal" },
+                      { label: "Protein",  value: recipe.macros.protein,  unit: "g" },
+                      { label: "Carbs",    value: recipe.macros.carbs,    unit: "g" },
+                      { label: "Fat",      value: recipe.macros.fat,      unit: "g" },
+                      { label: "Fiber",    value: recipe.macros.fiber,    unit: "g" },
+                    ].map((m) => (
+                      <div key={m.label} className="flex flex-col items-center py-3 px-2">
+                        <span className="text-xl font-bold text-foreground">{m.value}</span>
+                        <span className="text-[10px] text-muted-foreground">{m.unit}</span>
+                        <span className="text-xs text-muted-foreground mt-0.5">{m.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </SectionFile>
+              </>
+            )}
+
+            {/* ── TWEAKS TAB ──────────────────────────────────────────────── */}
+            {activeTab === "tweaks" && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium text-foreground">{tweaks.length}</span> tweaks on{" "}
+                    <span className="font-medium text-foreground">main</span>
+                  </p>
+                  <button className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-border bg-card hover:bg-muted text-xs font-medium transition-colors">
+                    <Plus className="w-3 h-3" />
+                    Save a tweak
+                  </button>
+                </div>
+
+                <div className="border border-border rounded-xl overflow-hidden divide-y divide-border">
+                  {tweaks.map((tweak) => (
+                    <TweakRow key={tweak.id} tweak={tweak} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── FORKS TAB ───────────────────────────────────────────────── */}
+            {activeTab === "forks" && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium text-foreground">{recipe.forks}</span> forks of this
+                    recipe
+                  </p>
+                  <button className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-yellow-brand hover:bg-yellow-hover text-[oklch(0.12_0_0)] text-xs font-medium transition-colors">
+                    <GitFork className="w-3 h-3" />
+                    Fork this recipe
+                  </button>
+                </div>
+
+                {forks.length > 0 ? (
+                  <div className="space-y-3">
+                    {forks.map((fork) => (
+                      <Link
+                        key={fork.id}
+                        href={`/${fork.owner.username}/${fork.slug}`}
+                        className="flex gap-4 p-4 rounded-xl border border-border bg-card hover:border-yellow-brand transition-all group"
+                      >
+                        <div className="shrink-0 w-14 h-14 rounded-lg overflow-hidden bg-muted">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={fork.imageUrl}
+                            alt={fork.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Avatar className="h-4 w-4">
+                              <AvatarImage src={fork.owner.avatarUrl} />
+                              <AvatarFallback className="text-[8px] bg-yellow-light">
+                                {fork.owner.displayName[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-xs text-muted-foreground">
+                              {fork.owner.username}
+                            </span>
+                            <span className="text-xs text-muted-foreground">·</span>
+                            <span className="text-xs text-muted-foreground">
+                              updated {fork.updatedAt}
+                            </span>
+                          </div>
+                          <p className="text-sm font-semibold text-foreground group-hover:text-yellow-brand transition-colors">
+                            {fork.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                            {fork.description}
+                          </p>
+                          <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Star className="w-3 h-3" />
+                              {fork.stars.toLocaleString()}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <GitCommitHorizontal className="w-3 h-3" />
+                              {fork.tweaks} tweaks
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  /* Placeholder fork network */
+                  <div className="space-y-3">
+                    {[
+                      {
+                        user: "gluten_free_gary",
+                        name: `${recipe.name} (GF)`,
+                        tweaks: 8,
+                        stars: 312,
+                        change: "Swapped flour for rice-flour alternative",
+                      },
+                      {
+                        user: "vegan_vivienne",
+                        name: `${recipe.name} (Vegan)`,
+                        tweaks: 5,
+                        stars: 204,
+                        change: "Replaced dairy and eggs with plant-based alternatives",
+                      },
+                      {
+                        user: "shrey",
+                        name: `${recipe.name} (Weeknight)`,
+                        tweaks: 3,
+                        stars: 88,
+                        change: "Simplified to a 30-min weeknight version",
+                      },
+                    ].map((f) => (
+                      <div
+                        key={f.user}
+                        className="flex gap-4 p-4 rounded-xl border border-border bg-card hover:border-yellow-brand/50 transition-all"
+                      >
+                        <Avatar className="h-10 w-10 shrink-0">
+                          <AvatarImage
+                            src={`https://api.dicebear.com/9.x/lorelei/svg?seed=${f.user}`}
+                          />
+                          <AvatarFallback className="bg-yellow-light text-xs">
+                            {f.user[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-foreground">{f.name}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">by {f.user}</p>
+                          <p className="text-xs text-muted-foreground mt-1 italic">
+                            &ldquo;{f.change}&rdquo;
+                          </p>
+                          <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Star className="w-3 h-3" />
+                              {f.stars}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <GitCommitHorizontal className="w-3 h-3" />
+                              {f.tweaks} tweaks
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── TASTE TESTS TAB ─────────────────────────────────────────── */}
+            {activeTab === "taste-tests" && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium text-foreground">{tasteTsts.length}</span> taste
+                    tests —{" "}
+                    <span className="text-yellow-brand font-medium">
+                      {tasteTsts.filter((t) => t.type === "suggestion" && t.status === "open").length}{" "}
+                      open suggestions
+                    </span>
+                  </p>
+                  <button className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-yellow-brand hover:bg-yellow-hover text-[oklch(0.12_0_0)] text-xs font-medium transition-colors">
+                    <Plus className="w-3 h-3" />
+                    Add taste test
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {tasteTsts.map((tt) =>
+                    tt.type === "suggestion" ? (
+                      <SuggestionCard key={tt.id} tt={tt} />
+                    ) : (
+                      <CommentCard key={tt.id} tt={tt} />
+                    ),
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar (only on Recipe tab) */}
+          {activeTab === "recipe" && (
+            <aside className="w-64 shrink-0 hidden lg:block space-y-5">
+              <div>
+                <h3 className="text-sm font-semibold mb-2">About</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {recipe.description}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-1">
+                  {recipe.tags.map((tag) => (
+                    <Badge
+                      key={tag}
+                      variant="secondary"
+                      className="bg-yellow-muted text-foreground/70 border-0 text-xs font-normal"
+                    >
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+              <Separator />
+              <div className="space-y-2.5">
+                <StatRow
+                  icon={<Star className="w-4 h-4" />}
+                  label="Stars"
+                  value={recipe.stars.toLocaleString()}
+                />
+                <StatRow
+                  icon={<GitFork className="w-4 h-4" />}
+                  label="Forks"
+                  value={recipe.forks.toString()}
+                />
+                <StatRow
+                  icon={<ChefHat className="w-4 h-4" />}
+                  label="Taste Tests"
+                  value={recipe.tastings.toString()}
+                />
+                <StatRow
+                  icon={<GitCommitHorizontal className="w-4 h-4" />}
+                  label="Tweaks"
+                  value={recipe.tweaks.toString()}
+                />
+              </div>
+              <Separator />
+              <div>
+                <h3 className="text-sm font-semibold mb-3">Recent Tweaks</h3>
+                <div className="space-y-2.5">
+                  {tweaks.slice(0, 3).map((tweak) => (
+                    <div key={tweak.id} className="flex items-start gap-2">
+                      <GitCommitHorizontal className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-xs text-foreground leading-snug line-clamp-2">
+                          {tweak.message}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          {tweak.timestamp}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </aside>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ── Sub-components ──────────────────────────────────────────────────────────── */
+
+function ActionButton({
+  icon,
+  label,
+  count,
+  highlight = false,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  count: number;
+  highlight?: boolean;
+}) {
+  return (
+    <button
+      className={`inline-flex items-center h-8 rounded-md border text-xs font-medium transition-colors overflow-hidden ${
+        highlight
+          ? "border-yellow-brand/40 hover:border-yellow-brand"
+          : "border-border hover:bg-yellow-subtle"
+      }`}
+    >
+      <span className="flex items-center gap-1.5 px-3 h-full bg-card hover:bg-yellow-subtle transition-colors border-r border-border">
+        {icon}
+        {label}
+      </span>
+      <span className="px-2.5 h-full flex items-center bg-yellow-subtle/50 hover:bg-yellow-subtle transition-colors text-muted-foreground">
+        {count.toLocaleString()}
+      </span>
+    </button>
+  );
+}
+
+function SectionFile({
+  icon,
+  filename,
+  rightSlot,
+  children,
+}: {
+  icon: React.ReactNode;
+  filename: string;
+  rightSlot?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="border border-border rounded-xl overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-2.5 bg-muted/40 border-b border-border">
+        <span className="text-muted-foreground">{icon}</span>
+        <span className="text-xs font-medium text-muted-foreground">{filename}</span>
+        {rightSlot && <span className="ml-auto">{rightSlot}</span>}
+      </div>
+      <div className="p-6">{children}</div>
+    </div>
+  );
+}
+
+function TweakRow({ tweak }: { tweak: MockTweak }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className="px-4 py-3 hover:bg-muted/30 transition-colors">
+      <div className="flex items-center gap-3">
+        <GitCommitHorizontal className="w-4 h-4 text-muted-foreground shrink-0" />
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex-1 text-sm font-medium text-foreground text-left hover:text-yellow-brand transition-colors"
+        >
+          {tweak.message}
+        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs text-green-500 font-mono">+{tweak.additions}</span>
+          <span className="text-xs text-red-400 font-mono">-{tweak.deletions}</span>
+          <Avatar className="h-5 w-5">
+            <AvatarImage src={tweak.author.avatarUrl} />
+            <AvatarFallback className="text-[8px] bg-yellow-light">
+              {tweak.author.displayName[0]}
+            </AvatarFallback>
+          </Avatar>
+          <span className="text-xs text-muted-foreground hidden sm:inline">{tweak.timestamp}</span>
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {expanded ? (
+              <ChevronUp className="w-3.5 h-3.5" />
+            ) : (
+              <ChevronDown className="w-3.5 h-3.5" />
+            )}
+          </button>
+        </div>
+      </div>
+      {expanded && (
+        <div className="mt-3 ml-7 rounded-lg border border-border overflow-hidden text-xs font-mono">
+          <div className="bg-green-500/10 border-b border-border px-3 py-2 text-green-600 dark:text-green-400">
+            + {tweak.message} — added by {tweak.author.username} on {tweak.timestamp}
+          </div>
+          <div className="px-3 py-2 text-muted-foreground bg-muted/30">
+            <p className="text-[11px]">
+              sha: {tweak.id}a3f9c2d · {tweak.author.username} committed on {tweak.timestamp}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SuggestionCard({ tt }: { tt: MockTasteTest }) {
+  const statusColor =
+    tt.status === "open"
+      ? "text-green-500 bg-green-500/10 border-green-500/20"
+      : tt.status === "merged"
+        ? "text-purple-500 bg-purple-500/10 border-purple-500/20"
+        : "text-muted-foreground bg-muted border-border";
+  const StatusIcon =
+    tt.status === "merged" ? GitMerge : tt.status === "open" ? GitFork : X;
+
+  return (
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <div className="flex items-start gap-3 p-4">
+        <span
+          className={`mt-0.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-medium shrink-0 ${statusColor}`}
+        >
+          <StatusIcon className="w-3 h-3" />
+          {tt.status}
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-foreground">{tt.title}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <Avatar className="h-4 w-4">
+              <AvatarImage src={tt.author.avatarUrl} />
+              <AvatarFallback className="text-[8px] bg-yellow-light">
+                {tt.author.displayName[0]}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-xs text-muted-foreground">
+              by {tt.author.username} · {tt.timestamp}
+            </span>
+          </div>
+        </div>
+        {tt.status === "open" && (
+          <div className="flex gap-2 shrink-0">
+            <button className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md bg-green-500/10 hover:bg-green-500/20 text-green-600 dark:text-green-400 text-xs font-medium transition-colors border border-green-500/20">
+              <Check className="w-3 h-3" /> Merge
+            </button>
+            <button className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md bg-muted hover:bg-muted/80 text-muted-foreground text-xs font-medium transition-colors">
+              <X className="w-3 h-3" /> Close
+            </button>
+          </div>
+        )}
+      </div>
+
+      {tt.diff && (
+        <div className="border-t border-border font-mono text-xs">
+          {tt.diff.map((d, i) => (
+            <div key={i}>
+              <div className="flex items-center gap-2 px-4 py-1.5 bg-red-500/5 text-red-500 border-b border-border/50">
+                <span className="w-4 shrink-0 font-bold">−</span>
+                <span className="text-muted-foreground mr-2">{d.ingredient}:</span>
+                <span>{d.from}</span>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-1.5 bg-green-500/5 text-green-600 dark:text-green-400">
+                <span className="w-4 shrink-0 font-bold">+</span>
+                <span className="text-muted-foreground mr-2">{d.ingredient}:</span>
+                <span>{d.to}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CommentCard({ tt }: { tt: MockTasteTest }) {
+  return (
+    <div className="flex gap-3 p-4 rounded-xl border border-border bg-card">
+      <Avatar className="h-8 w-8 shrink-0 mt-0.5">
+        <AvatarImage src={tt.author.avatarUrl} />
+        <AvatarFallback className="text-xs bg-yellow-light">
+          {tt.author.displayName[0]}
+        </AvatarFallback>
+      </Avatar>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-sm font-medium text-foreground">{tt.author.displayName}</span>
+          <span className="text-xs text-muted-foreground">· {tt.timestamp}</span>
+          {tt.rating && (
+            <span className="ml-auto flex items-center gap-0.5">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Star
+                  key={i}
+                  className={`w-3 h-3 ${
+                    i < tt.rating!
+                      ? "text-yellow-brand fill-yellow-brand/60"
+                      : "text-muted-foreground/30"
+                  }`}
+                />
+              ))}
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-foreground/90 leading-relaxed">{tt.body}</p>
+      </div>
+    </div>
+  );
+}
+
+function StatRow({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center gap-2 text-sm">
+      <span className="text-muted-foreground">{icon}</span>
+      <span className="text-muted-foreground">{label}</span>
+      <span className="ml-auto font-medium text-foreground">{value}</span>
+    </div>
+  );
+}

@@ -1,26 +1,180 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-geist-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+
+  /* Forkable brand yellows — available as Tailwind utilities */
+  --color-yellow-brand: var(--yellow-brand);
+  --color-yellow-light: var(--yellow-light);
+  --color-yellow-muted: var(--yellow-muted);
+  --color-yellow-subtle: var(--yellow-subtle);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  /* ── Forkable Brand Palette ─────────────────────────────────── */
+  /* Golden yellow: approx #F5C518 (IMDB-gold warmth) */
+  --yellow-brand:  oklch(0.83 0.17 88);
+  /* Hover / pressed yellow */
+  --yellow-hover:  oklch(0.76 0.17 88);
+  /* Light yellow for tags, chips */
+  --yellow-light:  oklch(0.92 0.09 88);
+  /* Very subtle yellow tint for section backgrounds */
+  --yellow-muted:  oklch(0.96 0.05 88);
+  /* Near-white with just a breath of warmth */
+  --yellow-subtle: oklch(0.99 0.01 88);
+
+  /* ── Semantic Design Tokens ─────────────────────────────────── */
+  --background:            oklch(1 0 0);
+  --foreground:            oklch(0.15 0.015 60);
+
+  --card:                  oklch(1 0 0);
+  --card-foreground:       oklch(0.15 0.015 60);
+
+  --popover:               oklch(1 0 0);
+  --popover-foreground:    oklch(0.15 0.015 60);
+
+  /* Primary = brand yellow; text on it stays dark */
+  --primary:               var(--yellow-brand);
+  --primary-foreground:    oklch(0.12 0.015 60);
+
+  /* Secondary = very light yellow */
+  --secondary:             var(--yellow-muted);
+  --secondary-foreground:  oklch(0.30 0.02 60);
+
+  --muted:                 oklch(0.96 0.02 80);
+  --muted-foreground:      oklch(0.52 0.02 60);
+
+  --accent:                var(--yellow-light);
+  --accent-foreground:     oklch(0.20 0.02 60);
+
+  --destructive:           oklch(0.577 0.245 27.325);
+
+  /* Warm border — not cold gray */
+  --border:                oklch(0.90 0.025 85);
+  --input:                 oklch(0.90 0.025 85);
+  --ring:                  var(--yellow-brand);
+
+  --radius: 0.5rem;
+
+  --sidebar:               oklch(0.98 0.01 88);
+  --sidebar-foreground:    oklch(0.15 0.015 60);
+  --sidebar-primary:       var(--yellow-brand);
+  --sidebar-primary-foreground: oklch(0.12 0.015 60);
+  --sidebar-accent:        var(--yellow-muted);
+  --sidebar-accent-foreground: oklch(0.20 0.02 60);
+  --sidebar-border:        oklch(0.90 0.025 85);
+  --sidebar-ring:          var(--yellow-brand);
+}
+
+.dark {
+  /* ── Forkable Dark: pure neutral gray + yellow as accent only ── */
+  /* Backgrounds are cold neutral — yellow only appears on interactive elements */
+  --yellow-brand:  oklch(0.83 0.17 88);   /* same brand yellow */
+  --yellow-hover:  oklch(0.76 0.17 88);
+  --yellow-light:  oklch(0.26 0 0);        /* hover states: neutral, not yellow */
+  --yellow-muted:  oklch(0.20 0 0);        /* section tints: neutral */
+  --yellow-subtle: oklch(0.17 0 0);        /* subtle tint: neutral */
+
+  --background:            oklch(0.18 0 0);   /* dark gray — not pitch black */
+  --foreground:            oklch(0.93 0 0);
+
+  --card:                  oklch(0.22 0 0);   /* slightly lighter than page bg */
+  --card-foreground:       oklch(0.93 0 0);
+
+  --popover:               oklch(0.24 0 0);
+  --popover-foreground:    oklch(0.93 0 0);
+
+  --primary:               var(--yellow-brand);
+  --primary-foreground:    oklch(0.10 0 0);
+
+  --secondary:             oklch(0.26 0 0);
+  --secondary-foreground:  oklch(0.85 0 0);
+
+  --muted:                 oklch(0.24 0 0);
+  --muted-foreground:      oklch(0.58 0 0);
+
+  --accent:                oklch(0.28 0 0);
+  --accent-foreground:     oklch(0.93 0 0);
+
+  --destructive:           oklch(0.65 0.22 25);
+
+  --border:                oklch(0.30 0 0);
+  --input:                 oklch(0.30 0 0);
+  --ring:                  var(--yellow-brand);
+
+  --radius: 0.5rem;
+
+  --sidebar:               oklch(0.20 0 0);
+  --sidebar-foreground:    oklch(0.93 0 0);
+  --sidebar-primary:       var(--yellow-brand);
+  --sidebar-primary-foreground: oklch(0.10 0 0);
+  --sidebar-accent:        oklch(0.26 0 0);
+  --sidebar-accent-foreground: oklch(0.93 0 0);
+  --sidebar-border:        oklch(0.30 0 0);
+  --sidebar-ring:          var(--yellow-brand);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground transition-colors duration-300;
+  }
+  html {
+    @apply font-sans;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ── Forkable utility classes ───────────────────────────────────── */
+@layer utilities {
+  .bg-yellow-brand   { background-color: var(--yellow-brand); }
+  .bg-yellow-light   { background-color: var(--yellow-light); }
+  .bg-yellow-muted   { background-color: var(--yellow-muted); }
+  .bg-yellow-subtle  { background-color: var(--yellow-subtle); }
+  .text-yellow-brand { color: var(--yellow-brand); }
+  .border-yellow-brand { border-color: var(--yellow-brand); }
+  .ring-yellow-brand { --tw-ring-color: var(--yellow-brand); }
+
+  /* Nav border-bottom glow */
+  .nav-shadow { box-shadow: 0 1px 0 0 var(--border); }
+
+  /* File-tree row hover */
+  .file-row:hover { background-color: var(--yellow-subtle); }
 }
