@@ -58,7 +58,7 @@ export default function ExplorePage() {
   const [includedTags, setIncludedTags] = useState<Set<string>>(new Set());
   const [excludedTags, setExcludedTags] = useState<Set<string>>(new Set());
 
-  // Search — seed from URL param ?q=
+  // Search - seed from URL param ?q=
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
 
   useEffect(() => {
@@ -177,7 +177,7 @@ export default function ExplorePage() {
     });
   }, [iq, selectedIngredients]);
 
-  // Smart % match — fuzzy ingredient matching across all recipes
+  // Smart % match - fuzzy ingredient matching across all recipes
   const recipeMatches = useMemo(() => {
     if (selectedIngredients.size === 0) return [];
     return MOCK_RECIPES.map((recipe) => {
@@ -536,7 +536,7 @@ export default function ExplorePage() {
             <div>
               <p className="text-sm font-semibold text-foreground">What&apos;s in your fridge?</p>
               <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                Select ingredients you have on hand — we&apos;ll rank every recipe by how many you already own.
+                Select ingredients you have on hand - we&apos;ll rank every recipe by how many you already own.
                 Spot recipes that need just 1–2 more things to buy.
               </p>
             </div>
@@ -605,7 +605,7 @@ export default function ExplorePage() {
                 </div>
               )}
 
-              {/* Ingredient list — git file tree style */}
+              {/* Ingredient list - git file tree style */}
               <div className="border border-border rounded-xl overflow-hidden">
                 <div className="flex items-center gap-2 px-3 py-2 bg-muted/40 border-b border-border">
                   <Package className="w-3.5 h-3.5 text-muted-foreground" />
@@ -671,7 +671,7 @@ export default function ExplorePage() {
                   <ShoppingCart className="w-10 h-10 text-muted-foreground/20 mb-4" />
                   <p className="text-sm font-medium text-foreground mb-1">Your ingredient list is empty</p>
                   <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
-                    Tick ingredients on the left to see which recipes you can cook right now — and which ones
+                    Tick ingredients on the left to see which recipes you can cook right now - and which ones
                     need just one or two more things.
                   </p>
                 </div>
@@ -736,7 +736,7 @@ export default function ExplorePage() {
                         <span className="px-1.5 py-0.5 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 text-[11px] font-medium">
                           {recipeMatches.filter((m) => m.pct < 70).length}
                         </span>
-                        <span className="text-[11px] text-muted-foreground">partial match — needs more shopping</span>
+                        <span className="text-[11px] text-muted-foreground">partial match - needs more shopping</span>
                         <div className="flex-1 h-px bg-border ml-1" />
                       </div>
                       <div className="space-y-3">

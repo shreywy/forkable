@@ -19,7 +19,7 @@ export function Footer() {
             <GitFork className="w-3 h-3 text-yellow-brand" strokeWidth={2.5} />
           </span>
           <span className="text-xs font-medium">
-            © {YEAR} Forkable — version control for recipes
+            © {YEAR} Forkable · version control for recipes
           </span>
         </div>
         <nav className="flex items-center gap-4">

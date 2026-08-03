@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Forkable — Version control for recipes",
+  title: "Forkable: Version control for recipes",
   description:
     "Fork, remix, and collaborate on recipes. The friendly way to cook together.",
 };

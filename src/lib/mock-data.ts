@@ -46,7 +46,7 @@ export type MockComponent = {
   updatedAt: string;
   lastTweak: string;
   children?: MockComponent[];
-  // Sub-recipe steps — only present on folder-type components
+  // Sub-recipe steps - only present on folder-type components
   subSteps?: { step: number; text: string }[];
   displayName?: string; // human-friendly label (e.g. "Bolognese Sauce")
 };
@@ -140,7 +140,7 @@ export const MOCK_RECIPES: MockRecipe[] = [
           { type: "file", name: "instructions.md",  updatedAt: "2026-07-12", lastTweak: "Clarify browning step" },
         ],
         subSteps: [
-          { step: 1, text: "Heat olive oil in a heavy-bottomed pot over medium-high heat. Add the ground beef and pork mince in batches — don't overcrowd. Season generously with salt and pepper and brown deeply, about 6–8 min." },
+          { step: 1, text: "Heat olive oil in a heavy-bottomed pot over medium-high heat. Add the ground beef and pork mince in batches - don't overcrowd. Season generously with salt and pepper and brown deeply, about 6–8 min." },
           { step: 2, text: "Add finely diced onion, carrot, and celery (soffritto). Reduce heat to medium and cook until softened and golden, about 10 minutes." },
           { step: 3, text: "Pour in the red wine. Scrape up any browned bits and let the wine reduce completely, about 3 minutes." },
           { step: 4, text: "Add tinned tomatoes and a splash of whole milk. Stir, cover partially, and simmer on the lowest possible heat for at least 2 hours. The sauce should barely blip." },
@@ -190,7 +190,7 @@ export const MOCK_RECIPES: MockRecipe[] = [
       { step: 3, text: "Pour in the wine and let it reduce completely. Add crushed tomatoes and a splash of whole milk. Simmer on the lowest heat for at least 2 hours." },
       { step: 4, text: "Make the béchamel: melt butter, whisk in flour, then slowly add warm milk. Season with salt, white pepper, and a grating of nutmeg." },
       { step: 5, text: "Layer: bolognese → pasta → béchamel → repeat. Finish with béchamel and a thick layer of Parmigiano." },
-      { step: 6, text: "Bake at 375°F (190°C) for 45 minutes until bubbling and golden. Rest for 20 minutes before cutting — this is non-negotiable." },
+      { step: 6, text: "Bake at 375°F (190°C) for 45 minutes until bubbling and golden. Rest for 20 minutes before cutting - this is non-negotiable." },
     ],
     macros: { servings: 8, calories: 620, protein: 38, carbs: 44, fat: 29, fiber: 3 },
     ingredientNames: ["ground beef", "pork mince", "onion", "carrot", "celery", "red wine", "tinned tomatoes", "whole milk", "butter", "all-purpose flour", "parmigiano reggiano", "pasta", "nutmeg", "salt", "olive oil"],
@@ -286,7 +286,7 @@ export const MOCK_RECIPES: MockRecipe[] = [
     instructions: [
       { step: 1, text: "Brown the butter in a saucepan until nutty and amber. Cool slightly, then whisk in tahini, both sugars, egg, egg yolk, and vanilla." },
       { step: 2, text: "Fold in flour, baking soda, and salt. Stir in dark chocolate chunks. Chill dough 30 minutes." },
-      { step: 3, text: "Scoop onto lined baking sheets. Bake at 375°F for 10–12 minutes — they will look underdone. Rest on the pan for 5 minutes." },
+      { step: 3, text: "Scoop onto lined baking sheets. Bake at 375°F for 10–12 minutes - they will look underdone. Rest on the pan for 5 minutes." },
     ],
     macros: { servings: 18, calories: 195, protein: 3, carbs: 22, fat: 11, fiber: 1 },
     ingredientNames: ["tahini", "butter", "sugar", "eggs", "all-purpose flour", "baking soda", "chocolate chips", "vanilla extract", "salt"],
@@ -334,7 +334,7 @@ export const MOCK_RECIPES: MockRecipe[] = [
     components: [],
     instructions: [
       { step: 1, text: "Blanch pork bones in boiling water for 10 minutes. Drain, rinse under cold water, and scrub clean." },
-      { step: 2, text: "Roast bones at 425°F for 30 minutes until golden. Transfer to a large stockpot with water, ginger, and garlic. Boil hard — the hard boil is what makes the broth turn milky white." },
+      { step: 2, text: "Roast bones at 425°F for 30 minutes until golden. Transfer to a large stockpot with water, ginger, and garlic. Boil hard - the hard boil is what makes the broth turn milky white." },
       { step: 3, text: "Simmer for 10–12 hours, topping up water as needed. Strain through a fine mesh sieve." },
       { step: 4, text: "Cook ramen noodles separately. Season broth with tare (2 tbsp soy, 1 tbsp mirin, 1 tbsp sake per bowl). Top with chashu, marinated egg, nori, menma, and scallions." },
     ],
@@ -359,7 +359,7 @@ export const MOCK_RECIPES: MockRecipe[] = [
     components: [],
     instructions: [
       { step: 1, text: "Whisk together 1 cup Greek yogurt, 2 eggs, 1 tsp vanilla, and 2 tbsp maple syrup." },
-      { step: 2, text: "Fold in ¾ cup flour, 1 tsp baking powder, and a pinch of salt. Don't overmix — lumps are fine." },
+      { step: 2, text: "Fold in ¾ cup flour, 1 tsp baking powder, and a pinch of salt. Don't overmix - lumps are fine." },
       { step: 3, text: "Cook on a buttered non-stick pan over medium-low heat. Flip when bubbles form and edges look set, about 2–3 minutes per side." },
     ],
     macros: { servings: 8, calories: 145, protein: 8, carbs: 18, fat: 4, fiber: 1 },
@@ -370,7 +370,7 @@ export const MOCK_RECIPES: MockRecipe[] = [
     slug: "thai-green-curry",
     name: "Thai Green Curry",
     description:
-      "Fragrant, creamy, and deeply spiced. Homemade green curry paste makes all the difference — it only takes 10 minutes in a blender.",
+      "Fragrant, creamy, and deeply spiced. Homemade green curry paste makes all the difference - it only takes 10 minutes in a blender.",
     owner: MOCK_USERS.vegan_vivienne,
     imageUrl: "https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd?w=800&q=80",
     forkedFrom: null,
@@ -429,7 +429,7 @@ export const MOCK_COOKBOOKS: MockCookbook[] = [
     id: "cb3",
     slug: "plant-based-staples",
     name: "Plant-Based Staples",
-    description: "The recipes I cook on rotation — all vegan, all crowd-pleasers.",
+    description: "The recipes I cook on rotation - all vegan, all crowd-pleasers.",
     owner: "vegan_vivienne",
     recipeIds: ["4", "6", "9"],
     isPublic: true,
@@ -480,7 +480,7 @@ export const MOCK_TASTE_TESTS: MockTasteTest[] = [
     type: "comment",
     author: MOCK_USERS.vegan_vivienne,
     timestamp: "2026-07-22",
-    body: "Made this last Sunday for the family. The 20-minute resting time is absolutely non-negotiable — cut into it early once and regretted it. 10/10 recipe, Nonna Rosa.",
+    body: "Made this last Sunday for the family. The 20-minute resting time is absolutely non-negotiable - cut into it early once and regretted it. 10/10 recipe, Nonna Rosa.",
     rating: 5,
   },
   {
@@ -499,7 +499,7 @@ export const MOCK_TASTE_TESTS: MockTasteTest[] = [
     type: "comment",
     author: MOCK_USERS.kenji_tokyo,
     timestamp: "2026-07-10",
-    body: "Tried the béchamel with a bit more nutmeg after Tweak #4 — agree completely, it makes a real difference. Also added a pinch of cayenne.",
+    body: "Tried the béchamel with a bit more nutmeg after Tweak #4 - agree completely, it makes a real difference. Also added a pinch of cayenne.",
     rating: 4,
   },
   {

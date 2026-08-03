@@ -150,7 +150,7 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts, forks }: Props) {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* Edit button — only for the recipe owner (shrey in Phase 1) */}
+              {/* Edit button - only for the recipe owner (shrey in Phase 1) */}
               {owner.username === "shrey" && (
                 <button
                   onClick={() => router.push(`/${owner.username}/${recipe.slug}/edit`)}
@@ -459,7 +459,7 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts, forks }: Props) {
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-muted-foreground">
                     <span className="font-medium text-foreground">{tasteTsts.length}</span> taste
-                    tests —{" "}
+                    tests -{" "}
                     <span className="text-yellow-brand font-medium">
                       {tasteTsts.filter((t) => t.type === "suggestion" && t.status === "open").length}{" "}
                       open suggestions
@@ -646,7 +646,7 @@ function TweakRow({ tweak }: { tweak: MockTweak }) {
       {expanded && (
         <div className="mt-3 ml-7 rounded-lg border border-border overflow-hidden text-xs font-mono">
           <div className="bg-green-500/10 border-b border-border px-3 py-2 text-green-600 dark:text-green-400">
-            + {tweak.message} — added by {tweak.author.username} on {tweak.timestamp}
+            + {tweak.message} - added by {tweak.author.username} on {tweak.timestamp}
           </div>
           <div className="px-3 py-2 text-muted-foreground bg-muted/30">
             <p className="text-[11px]">

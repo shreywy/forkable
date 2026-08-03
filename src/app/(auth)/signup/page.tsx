@@ -72,7 +72,7 @@ export default function SignupPage() {
           <GitFork className="w-6 h-6" strokeWidth={2.5} />
         </span>
         <h1 className="text-2xl font-bold text-foreground">Create your account</h1>
-        <p className="text-sm text-muted-foreground mt-1">Start forking recipes today — it&apos;s free</p>
+        <p className="text-sm text-muted-foreground mt-1">Start forking recipes today - it&apos;s free</p>
       </div>
 
       {/* Google SSO */}

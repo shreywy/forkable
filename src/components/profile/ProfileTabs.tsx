@@ -125,7 +125,7 @@ export function ProfileTabs({
             <EmptyState
               icon={<Library className="w-10 h-10" />}
               message="No cookbooks yet."
-              sub="Cookbooks let you group recipes into themed collections — like playlists."
+              sub="Cookbooks let you group recipes into themed collections - like playlists."
             />
           )}
         </>

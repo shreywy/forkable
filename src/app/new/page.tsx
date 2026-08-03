@@ -25,7 +25,7 @@ interface Step {
   text: string;
 }
 
-// Global tag list — starts with defaults, users can add custom tags
+// Global tag list - starts with defaults, users can add custom tags
 const DEFAULT_TAGS = [
   "Vegan", "Baking", "Quick", "Breakfast", "Soups",
   "Asian", "BBQ", "World", "Dinner", "Lunch",
@@ -437,7 +437,7 @@ export default function NewRecipePage() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
-                placeholder="A brief description of this recipe — what makes it special?"
+                placeholder="A brief description of this recipe - what makes it special?"
                 className="w-full px-3 py-2.5 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-yellow-brand placeholder:text-muted-foreground resize-none"
               />
             </div>

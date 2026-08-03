@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Terms of Service — Forkable" };
+export const metadata = { title: "Terms of Service - Forkable" };
 
 const EFFECTIVE_DATE = "1 August 2026";
 const CONTACT_EMAIL = "legal@forkable.io";
@@ -45,7 +45,7 @@ export default function TermsPage() {
         </Section>
 
         <Section title="8. Disclaimer of Warranties">
-          <p>The Service is provided &quot;as is&quot; and &quot;as available.&quot; We make no warranties, express or implied, regarding reliability, accuracy, or fitness for a particular purpose. We do not guarantee that recipes are safe, accurate, or free from allergens — always verify ingredients for dietary needs.</p>
+          <p>The Service is provided &quot;as is&quot; and &quot;as available.&quot; We make no warranties, express or implied, regarding reliability, accuracy, or fitness for a particular purpose. We do not guarantee that recipes are safe, accurate, or free from allergens - always verify ingredients for dietary needs.</p>
         </Section>
 
         <Section title="9. Limitation of Liability">

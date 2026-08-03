@@ -19,7 +19,7 @@ export default function NotFound() {
 
       {/* Subtext */}
       <p className="text-sm text-muted-foreground max-w-sm leading-relaxed mb-8">
-        Looks like this branch doesn&apos;t exist — the recipe may have been moved,
+        Looks like this branch doesn&apos;t exist - the recipe may have been moved,
         renamed, or deleted. Check the URL and try again.
       </p>
 

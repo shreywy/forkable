@@ -258,7 +258,7 @@ export default function OnboardingPage() {
         <div className="space-y-5">
           <div>
             <h2 className="text-xl font-bold text-foreground">Tell us about yourself</h2>
-            <p className="text-sm text-muted-foreground mt-1">Help other cooks get to know you — all optional</p>
+            <p className="text-sm text-muted-foreground mt-1">Help other cooks get to know you - all optional</p>
           </div>
 
           <div>
@@ -316,7 +316,7 @@ export default function OnboardingPage() {
                   type="text"
                   value={value}
                   onChange={(e) => set(e.target.value)}
-                  placeholder={`${label} — ${placeholder}`}
+                  placeholder={`${label} - ${placeholder}`}
                   className="w-full h-9 pl-8 pr-3 text-sm bg-muted border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-brand placeholder:text-muted-foreground"
                 />
               </div>
@@ -379,7 +379,7 @@ export default function OnboardingPage() {
           </div>
 
           {(selectedCuisines.size + selectedDietary.size + selectedStyle.size) === 0 && (
-            <p className="text-xs text-muted-foreground">Pick at least one to personalise your feed — or skip for now</p>
+            <p className="text-xs text-muted-foreground">Pick at least one to personalise your feed - or skip for now</p>
           )}
         </div>
       )}
@@ -436,7 +436,7 @@ export default function OnboardingPage() {
 
           <div className="p-4 rounded-xl bg-muted/50 border border-border">
             <p className="text-xs text-muted-foreground leading-relaxed">
-              <strong className="text-foreground">Dark mode</strong> is our recommended default —
+              <strong className="text-foreground">Dark mode</strong> is our recommended default -
               great for late-night cooking sessions and easier on the eyes in the kitchen.
             </p>
           </div>

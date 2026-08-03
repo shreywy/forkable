@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 export const dynamic = "force-dynamic";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { r2 } from "@/lib/r2";
+import { getR2Client } from "@/lib/r2";
 import { auth } from "@/lib/auth";
 import { z } from "zod";
 
@@ -22,6 +22,11 @@ function randomId(len = 12): string {
 }
 
 export async function POST(req: NextRequest) {
+  const r2 = getR2Client();
+  if (!r2) {
+    return Response.json({ error: "Image storage is not configured yet" }, { status: 503 });
+  }
+
   const session = await auth();
   if (!session?.user?.id) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -52,12 +57,11 @@ export async function POST(req: NextRequest) {
       Bucket:        process.env.R2_BUCKET_NAME!,
       Key:           key,
       ContentType:   contentType,
-      ContentLength: MAX_SIZE_MB * 1024 * 1024, // set upper bound
+      ContentLength: MAX_SIZE_MB * 1024 * 1024,
     }),
-    { expiresIn: 900 }, // 15 minutes
+    { expiresIn: 900 },
   );
 
   const publicUrl = `${process.env.R2_PUBLIC_URL}/${key}`;
-
   return Response.json({ uploadUrl, publicUrl, key });
 }

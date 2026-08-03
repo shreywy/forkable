@@ -35,9 +35,9 @@ const BLOCKED_SITES = [
 ];
 
 const CONFIDENCE_LABEL: Record<ParsedRecipe["confidence"], { label: string; color: string }> = {
-  high:   { label: "High confidence — ready to publish", color: "text-green-500" },
-  medium: { label: "Medium — review before publishing",   color: "text-yellow-500" },
-  low:    { label: "Low — needs manual editing",           color: "text-red-500" },
+  high:   { label: "High confidence - ready to publish", color: "text-green-500" },
+  medium: { label: "Medium - review before publishing",   color: "text-yellow-500" },
+  low:    { label: "Low - needs manual editing",           color: "text-red-500" },
 };
 
 export default function ImportRecipePage() {
@@ -86,7 +86,7 @@ export default function ImportRecipePage() {
         populateEditable(data as ParsedRecipe);
       }
     } catch {
-      setError("Network error — please try again");
+      setError("Network error - please try again");
     } finally {
       setLoading(false);
     }
@@ -119,7 +119,7 @@ export default function ImportRecipePage() {
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold text-foreground">Import a recipe</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Pull in a recipe from a URL or paste text — we&apos;ll parse it automatically.
+            Pull in a recipe from a URL or paste text - we&apos;ll parse it automatically.
           </p>
         </div>
 

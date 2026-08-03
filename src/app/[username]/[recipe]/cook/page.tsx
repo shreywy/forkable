@@ -220,8 +220,8 @@ export default function CookModePage() {
                         </p>
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {comp.subSteps.length} steps
-                          {state === true && " — skipping"}
-                          {state === false && " — will walk you through it"}
+                          {state === true && " - skipping"}
+                          {state === false && " - will walk you through it"}
                         </p>
                       </div>
                       {state !== null && (

@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
   } catch (err: unknown) {
     const isTimeout = err instanceof Error && err.name === "TimeoutError";
     return NextResponse.json(
-      { error: isTimeout ? "Request timed out — the site took too long to respond" : "Failed to fetch URL" },
+      { error: isTimeout ? "Request timed out - the site took too long to respond" : "Failed to fetch URL" },
       { status: 502 },
     );
   }

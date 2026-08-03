@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Privacy Policy — Forkable" };
+export const metadata = { title: "Privacy Policy - Forkable" };
 
 const EFFECTIVE_DATE = "1 August 2026";
 const CONTACT_EMAIL = "privacy@forkable.io";

@@ -55,7 +55,7 @@ function getFileContent(filename: string, recipe: MockRecipe, folder?: string): 
     const steps = recipe.instructions
       .map((s) => `## Step ${s.step}\n\n${s.text}`)
       .join("\n\n");
-    return `# ${recipe.name} — Instructions\n\n${steps}`;
+    return `# ${recipe.name} - Instructions\n\n${steps}`;
   }
 
   if (filename === "macros.json") {
