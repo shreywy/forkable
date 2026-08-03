@@ -9,53 +9,49 @@ interface FileTreeProps {
   recipe: RecipePageData;
 }
 
-// Generate mock file content based on filename + recipe data
-function getFileContent(filename: string, recipe: RecipePageData, folder?: string): string {
+// Generate file content — uses real data from item.subSteps when available, falls back to recipe-level data
+function getFileContent(filename: string, recipe: RecipePageData, folder?: string, item?: FileTreeNode): string {
   if (filename === "ingredients.json") {
     const folderLabel = folder ? ` (${folder})` : "";
-    const mockIngredients =
-      folder === "bolognese-sauce"
-        ? [
-            { name: "ground beef",    amount: 400,  unit: "g" },
-            { name: "ground pork",    amount: 200,  unit: "g" },
-            { name: "yellow onion",   amount: 1,    unit: "whole" },
-            { name: "carrot",         amount: 1,    unit: "whole" },
-            { name: "celery stalk",   amount: 2,    unit: "whole" },
-            { name: "red wine",       amount: 120,  unit: "ml" },
-            { name: "crushed tomatoes", amount: 400, unit: "g" },
-            { name: "whole milk",     amount: 60,   unit: "ml" },
-          ]
-        : folder === "bechamel"
-        ? [
-            { name: "unsalted butter", amount: 60,  unit: "g" },
-            { name: "all-purpose flour", amount: 60, unit: "g" },
-            { name: "whole milk",      amount: 750, unit: "ml" },
-            { name: "nutmeg",          amount: 0.5, unit: "tsp" },
-            { name: "white pepper",    amount: 1,   unit: "tsp" },
-          ]
-        : folder === "pasta-sheets"
-        ? [
-            { name: "00 flour",        amount: 300, unit: "g" },
-            { name: "eggs",            amount: 3,   unit: "whole" },
-            { name: "olive oil",       amount: 1,   unit: "tbsp" },
-            { name: "salt",            amount: 1,   unit: "tsp" },
-          ]
-        : [
-            { name: "ingredient 1", amount: 100, unit: "g" },
-            { name: "ingredient 2", amount: 2,   unit: "whole" },
-          ];
 
-    return JSON.stringify({ name: `${recipe.name}${folderLabel} ingredients`, ingredients: mockIngredients }, null, 2);
+    // Use real ingredient data encoded in subSteps (format: "name|amount|unit")
+    if (item?.subSteps && item.subSteps.length > 0) {
+      const ingredients = item.subSteps.map((s) => {
+        const [name, amount, unit] = s.text.split("|");
+        return {
+          name,
+          amount: amount ? (isNaN(Number(amount)) ? amount : Number(amount)) : null,
+          unit: unit || null,
+        };
+      });
+      return JSON.stringify(
+        { name: `${folder ?? recipe.name} ingredients`, ingredients },
+        null,
+        2,
+      );
+    }
+
+    return JSON.stringify(
+      { name: `${recipe.name}${folderLabel} ingredients`, ingredients: [] },
+      null,
+      2,
+    );
   }
 
   if (filename === "instructions.md") {
-    if (recipe.instructions.length === 0) {
-      return `# ${recipe.name}\n\nNo instructions yet.`;
+    // Use real steps from item.subSteps if available
+    const steps = item?.subSteps && item.subSteps.length > 0
+      ? item.subSteps
+      : recipe.instructions;
+
+    if (steps.length === 0) {
+      return `# ${folder ?? recipe.name}\n\nNo instructions yet.`;
     }
-    const steps = recipe.instructions
+    const stepsText = steps
       .map((s) => `## Step ${s.step}\n\n${s.text}`)
       .join("\n\n");
-    return `# ${recipe.name} - Instructions\n\n${steps}`;
+    const title = folder ?? recipe.name;
+    return `# ${title} - Instructions\n\n${stepsText}`;
   }
 
   if (filename === "macros.json") {
@@ -190,7 +186,7 @@ function FileRow({
           if (isFolder) {
             setExpanded((e) => !e);
           } else {
-            const content = getFileContent(item.name, recipe);
+            const content = getFileContent(item.name, recipe, openViewer?.folder, item);
             onOpen({ filename: item.name, content });
           }
         }}

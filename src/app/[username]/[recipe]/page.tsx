@@ -69,16 +69,54 @@ export default async function RecipePage({ params }: Props) {
   type ChildComp = TopComp["children"][number];
 
   function mapComponent(c: TopComp | ChildComp): FileTreeNode {
+    const isFolder = c.type === "FOLDER";
+    const steps = c.steps.map((s, i) => ({ step: i + 1, text: s.content }));
+
+    // Build nested sub-component children (real DB children)
+    const dbChildren = "children" in c && c.children.length > 0
+      ? (c.children as ChildComp[]).map(mapComponent)
+      : [];
+
+    // For folders: synthesize virtual ingredients.json + instructions.md file entries
+    // so the file tree shows browsable files inside each component folder.
+    const virtualFiles: FileTreeNode[] = [];
+    if (isFolder) {
+      if (c.ingredients.length > 0) {
+        virtualFiles.push({
+          type: "file",
+          name: "ingredients.json",
+          displayName: "ingredients.json",
+          updatedAt: c.updatedAt,
+          lastTweak: c.lastTweak ?? null,
+          // Encode real ingredient data into subSteps for getFileContent to use
+          subSteps: c.ingredients.map((ci, i) => ({
+            step: i + 1,
+            text: `${ci.ingredient.name}|${ci.amount ?? ""}|${ci.unit ?? ""}`,
+          })),
+        });
+      }
+      if (steps.length > 0) {
+        virtualFiles.push({
+          type: "file",
+          name: "instructions.md",
+          displayName: "instructions.md",
+          updatedAt: c.updatedAt,
+          lastTweak: c.lastTweak ?? null,
+          subSteps: steps,
+        });
+      }
+    }
+
+    const children = [...dbChildren, ...virtualFiles];
+
     return {
-      type: c.type === "FOLDER" ? "folder" : "file",
+      type: isFolder ? "folder" : "file",
       name: c.name,
       displayName: c.displayName,
       updatedAt: c.updatedAt,
       lastTweak: c.lastTweak ?? null,
-      children: "children" in c && c.children.length > 0
-        ? (c.children as ChildComp[]).map(mapComponent)
-        : undefined,
-      subSteps: c.steps.map((s, i) => ({ step: i + 1, text: s.content })),
+      children: children.length > 0 ? children : undefined,
+      subSteps: steps,
     };
   }
 

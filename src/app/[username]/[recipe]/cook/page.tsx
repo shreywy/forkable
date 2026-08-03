@@ -5,9 +5,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
   ChevronLeft, ChevronRight, X, Timer, CheckCircle2,
-  ChefHat, Maximize2, Thermometer, Layers, Check, ArrowRight,
+  ChefHat, Maximize2, Thermometer, Layers, Check, ArrowRight, Loader2,
 } from "lucide-react";
-import { MOCK_RECIPES, MockComponent } from "@/lib/mock-data";
 
 // ── Temperature conversion ─────────────────────────────────────────────────────
 
@@ -51,13 +50,39 @@ function formatTime(totalSeconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+// ── Recipe shape returned by the API ──────────────────────────────────────────
+
+interface ApiComponent {
+  name: string;
+  displayName: string | null;
+  type: string;
+  steps: { step: number; text: string }[];
+  subComponents: {
+    name: string;
+    displayName: string | null;
+    type: string;
+    steps: { step: number; text: string }[];
+  }[];
+}
+
+interface ApiRecipe {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  imageUrl: string | null;
+  author: { username: string; displayName: string; avatarUrl: string | null };
+  instructions: { step: number; text: string }[];
+  components: ApiComponent[];
+}
+
 // ── Step types ─────────────────────────────────────────────────────────────────
 
 interface CookStep {
   step: number;
   text: string;
-  section: string; // e.g. "Bolognese Sauce", "Béchamel", "Main Recipe"
-  sectionIndex: number; // index within its section (0-based)
+  section: string;
+  sectionIndex: number;
 }
 
 // ── Pre-flight component card ──────────────────────────────────────────────────
@@ -66,6 +91,10 @@ const COMPONENT_EMOJI: Record<string, string> = {
   "bolognese-sauce": "🥩",
   "bechamel": "🥛",
   "pasta-sheets": "🍝",
+  "broth": "🍲",
+  "tare": "🧂",
+  "chashu-pork": "🥩",
+  "assembly": "🍜",
 };
 
 function getComponentEmoji(name: string): string {
@@ -78,41 +107,64 @@ type Phase = "preflight" | "cooking" | "done";
 
 export default function CookModePage() {
   const params = useParams<{ username: string; recipe: string }>();
-  const recipe = MOCK_RECIPES.find(
-    (r) => r.owner.username === params.username && r.slug === params.recipe,
-  );
 
-  // Sub-components that have their own steps
-  const subComponents = (recipe?.components ?? []).filter(
-    (c): c is MockComponent & { subSteps: NonNullable<MockComponent["subSteps"]> } =>
-      c.type === "folder" && Array.isArray(c.subSteps) && c.subSteps.length > 0,
+  const [recipeData, setRecipeData] = useState<ApiRecipe | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/recipes/${params.username}/${params.recipe}`)
+      .then((res) => {
+        if (res.status === 404) { setNotFound(true); setLoading(false); return null; }
+        return res.json();
+      })
+      .then((data) => {
+        if (data) setRecipeData(data as ApiRecipe);
+        setLoading(false);
+      })
+      .catch(() => { setNotFound(true); setLoading(false); });
+  }, [params.username, params.recipe]);
+
+  // Derive sub-components: top-level folders that have steps
+  const subComponents = (recipeData?.components ?? []).filter(
+    (c) => c.type === "FOLDER" && c.steps.length > 0,
   );
 
   const hasSubComponents = subComponents.length > 0;
 
-  // Pre-flight state: null = unanswered, true = "I have it", false = "Need to make it"
-  const [componentReady, setComponentReady] = useState<Record<string, boolean | null>>(
-    () => Object.fromEntries(subComponents.map((c) => [c.name, null])),
-  );
+  const [componentReady, setComponentReady] = useState<Record<string, boolean | null>>({});
 
-  const [phase, setPhase] = useState<Phase>(hasSubComponents ? "preflight" : "cooking");
+  // Re-initialise componentReady when data loads
+  useEffect(() => {
+    if (subComponents.length > 0) {
+      setComponentReady(Object.fromEntries(subComponents.map((c) => [c.name, null])));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recipeData]);
+
+  const [phase, setPhase] = useState<Phase>("preflight");
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [timerSeconds, setTimerSeconds] = useState<number | null>(null);
   const [timerRunning, setTimerRunning] = useState(false);
   const [tempUnit, setTempUnit] = useState<"F" | "C">("F");
 
+  // Once data loads without sub-components, jump straight to cooking
+  useEffect(() => {
+    if (recipeData && !hasSubComponents) {
+      setPhase("cooking");
+    }
+  }, [recipeData, hasSubComponents]);
+
   const allAnswered = subComponents.every((c) => componentReady[c.name] !== null);
 
-  // Build merged step list after pre-flight
   const mergedSteps: CookStep[] = (() => {
-    if (!recipe) return [];
+    if (!recipeData) return [];
     const steps: CookStep[] = [];
 
-    // First: sub-components the user needs to make
     subComponents.forEach((comp) => {
       if (componentReady[comp.name] === false) {
-        comp.subSteps.forEach((s, i) => {
+        comp.steps.forEach((s, i) => {
           steps.push({
             step: s.step,
             text: s.text,
@@ -123,8 +175,11 @@ export default function CookModePage() {
       }
     });
 
-    // Then: main recipe steps
-    recipe.instructions.forEach((s, i) => {
+    const mainSteps = recipeData.instructions.length > 0
+      ? recipeData.instructions
+      : recipeData.components.flatMap((c) => c.steps);
+
+    mainSteps.forEach((s, i) => {
       steps.push({ step: s.step, text: s.text, section: "Assembly", sectionIndex: i });
     });
 
@@ -142,7 +197,17 @@ export default function CookModePage() {
     return () => clearInterval(id);
   }, [timerRunning, timerSeconds]);
 
-  if (!recipe) {
+  // ── Loading / not-found ────────────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-6 h-6 text-yellow-brand animate-spin" />
+      </div>
+    );
+  }
+
+  if (notFound || !recipeData) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -152,6 +217,8 @@ export default function CookModePage() {
       </div>
     );
   }
+
+  const recipe = recipeData;
 
   const startCooking = () => {
     setCurrentStep(0);
@@ -219,7 +286,7 @@ export default function CookModePage() {
                           {comp.displayName ?? comp.name}
                         </p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {comp.subSteps.length} steps
+                          {comp.steps.length} steps
                           {state === true && " - skipping"}
                           {state === false && " - will walk you through it"}
                         </p>
@@ -331,7 +398,6 @@ export default function CookModePage() {
     });
   };
 
-  // Group steps by section for sidebar
   const sections: { name: string; steps: typeof steps; startIdx: number }[] = [];
   steps.forEach((s, i) => {
     const last = sections[sections.length - 1];
@@ -395,7 +461,6 @@ export default function CookModePage() {
           <div className="p-2 space-y-1">
             {sections.map((section) => (
               <div key={section.name}>
-                {/* Section header */}
                 <div className="px-3 py-1.5 mt-2 first:mt-0">
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{section.name}</p>
                 </div>
