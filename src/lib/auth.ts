@@ -19,15 +19,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      // allowDangerousEmailAccountLinking prevents auto-merging a Google account
+      // onto an existing credentials account with the same email.
+      allowDangerousEmailAccountLinking: false,
       profile(profile) {
+        // Generate a unique username: prefix from email + first 8 chars of Google sub
+        // (sub is unique per Google user, making the full username collision-resistant)
+        const base = profile.email
+          .split("@")[0]
+          .toLowerCase()
+          .replace(/[^a-z0-9_]/g, "_")
+          .slice(0, 20);
+        const suffix = (profile.sub as string).slice(0, 8);
         return {
           id: profile.sub,
-          name: profile.name,
-          displayName: profile.name,
-          username: profile.email.split("@")[0].toLowerCase().replace(/[^a-z0-9_]/g, "_"),
+          name: profile.name ?? base,
+          displayName: profile.name ?? base,
+          username: `${base}_${suffix}`,
           email: profile.email,
           emailVerified: profile.email_verified ? new Date() : null,
-          avatarUrl: profile.picture,
+          avatarUrl: profile.picture ?? null,
         };
       },
     }),
