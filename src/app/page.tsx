@@ -1,6 +1,9 @@
 import { RecipeCard } from "@/components/RecipeCard";
-import { MOCK_RECIPES } from "@/lib/mock-data";
+import { prisma } from "@/lib/prisma";
 import { TrendingUp, Compass, Flame, Leaf, Cake, Coffee, Globe, Soup, Beef, Fish } from "lucide-react";
+import type { RecipeCardData } from "@/lib/types";
+
+export const revalidate = 300; // 5-minute ISR
 
 const GENRES = [
   { label: "Vegan",      icon: <Leaf className="w-5 h-5" />,        slug: "vegan" },
@@ -13,9 +16,42 @@ const GENRES = [
   { label: "World",      icon: <Globe className="w-5 h-5" />,       slug: "world" },
 ];
 
-export default function HomePage() {
-  const trending = MOCK_RECIPES.slice(0, 3);
-  const discover = MOCK_RECIPES.slice(3);
+export default async function HomePage() {
+  const rows = await prisma.recipe.findMany({
+    where: { isPublic: true },
+    orderBy: { starCount: "desc" },
+    take: 12,
+    include: {
+      author: { select: { username: true, displayName: true, avatarUrl: true } },
+      tags: { include: { tag: true }, take: 3 },
+      forkedFrom: { include: { author: { select: { username: true } } } },
+    },
+  });
+
+  const recipes: RecipeCardData[] = rows.map((r) => ({
+    id: r.id,
+    slug: r.slug,
+    name: r.name,
+    description: r.description,
+    imageUrl: r.imageUrl,
+    author: {
+      username: r.author.username,
+      displayName: r.author.displayName,
+      avatarUrl: r.author.avatarUrl,
+    },
+    forkedFrom: r.forkedFrom
+      ? { ownerUsername: r.forkedFrom.author.username, recipeSlug: r.forkedFrom.slug }
+      : null,
+    starCount: r.starCount,
+    forkCount: r.forkCount,
+    tasteTestCount: r.tasteTestCount,
+    tweakCount: r.tweakCount,
+    tags: r.tags.map((rt) => ({ name: rt.tag.name, label: rt.tag.label })),
+    updatedAt: r.updatedAt,
+  }));
+
+  const trending = recipes.slice(0, 3);
+  const discover = recipes.slice(3);
 
   return (
     <div className="min-h-screen bg-background">

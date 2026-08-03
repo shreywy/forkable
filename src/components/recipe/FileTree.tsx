@@ -2,15 +2,15 @@
 
 import { useState } from "react";
 import { Folder, FileText, ChevronRight, ChevronDown, X } from "lucide-react";
-import type { MockComponent, MockRecipe } from "@/lib/mock-data";
+import type { FileTreeNode, RecipePageData } from "@/lib/types";
 
 interface FileTreeProps {
-  items: MockComponent[];
-  recipe: MockRecipe;
+  items: FileTreeNode[];
+  recipe: RecipePageData;
 }
 
 // Generate mock file content based on filename + recipe data
-function getFileContent(filename: string, recipe: MockRecipe, folder?: string): string {
+function getFileContent(filename: string, recipe: RecipePageData, folder?: string): string {
   if (filename === "ingredients.json") {
     const folderLabel = folder ? ` (${folder})` : "";
     const mockIngredients =
@@ -62,12 +62,12 @@ function getFileContent(filename: string, recipe: MockRecipe, folder?: string): 
     return JSON.stringify(
       {
         per_serving: {
-          servings: recipe.macros.servings,
-          calories: `${recipe.macros.calories} kcal`,
-          protein:  `${recipe.macros.protein}g`,
-          carbs:    `${recipe.macros.carbs}g`,
-          fat:      `${recipe.macros.fat}g`,
-          fiber:    `${recipe.macros.fiber}g`,
+          servings: recipe.servings,
+          calories: recipe.calories != null ? `${recipe.calories} kcal` : null,
+          protein:  recipe.proteinG != null ? `${recipe.proteinG}g` : null,
+          carbs:    recipe.carbsG != null ? `${recipe.carbsG}g` : null,
+          fat:      recipe.fatG != null ? `${recipe.fatG}g` : null,
+          fiber:    recipe.fiberG != null ? `${recipe.fiberG}g` : null,
         },
       },
       null,
@@ -76,13 +76,15 @@ function getFileContent(filename: string, recipe: MockRecipe, folder?: string): 
   }
 
   if (filename === "assembly.md" || filename === "README.md") {
-    return `# ${recipe.name}\n\n${recipe.description}\n\n**Tags:** ${recipe.tags.join(", ")}\n\n**Last updated:** ${recipe.updatedAt}`;
+    const tagStr = recipe.tags.map((t) => t.label).join(", ");
+    const updatedStr = typeof recipe.updatedAt === "string" ? recipe.updatedAt : recipe.updatedAt.toLocaleDateString();
+    return `# ${recipe.name}\n\n${recipe.description}\n\n**Tags:** ${tagStr}\n\n**Last updated:** ${updatedStr}`;
   }
 
   return `# ${filename}\n\nNo preview available.`;
 }
 
-function formatRelative(dateStr: string): string {
+function formatRelative(dateStr: Date | string): string {
   const date = new Date(dateStr);
   const now = new Date();
   const diffDays = Math.floor((now.getTime() - date.getTime()) / 86400000);
@@ -164,9 +166,9 @@ function FileRow({
   onOpen,
   openViewer,
 }: {
-  item: MockComponent;
+  item: FileTreeNode;
   depth: number;
-  recipe: MockRecipe;
+  recipe: RecipePageData;
   onOpen: (v: ViewerState) => void;
   openViewer: ViewerState | null;
 }) {

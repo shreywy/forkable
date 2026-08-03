@@ -16,11 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { MOCK_USERS } from "@/lib/mock-data";
-
-const currentUser = MOCK_USERS.shrey;
-// Phase 1 demo: toggle this to simulate logged-out state
-const DEMO_LOGGED_IN = true;
+import { useSession, signOut } from "next-auth/react";
 
 // Mock notification data
 const MOCK_NOTIFICATIONS = [
@@ -57,6 +53,9 @@ const MOCK_NOTIFICATIONS = [
 export function Navbar() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const { data: session } = useSession();
+  const isLoggedIn = !!session;
+  const user = session?.user;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,7 +119,7 @@ export function Navbar() {
         {/* ── Right side ────────────────────────────────────────── */}
         <div className="ml-auto flex items-center gap-2">
           {/* Logged-out state */}
-          {!DEMO_LOGGED_IN && (
+          {!isLoggedIn && (
             <>
               <ThemeToggle />
               <Link
@@ -138,7 +137,7 @@ export function Navbar() {
             </>
           )}
 
-          {DEMO_LOGGED_IN && (
+          {isLoggedIn && (
           <>{/* New recipe dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger className="inline-flex items-center justify-center h-8 gap-1.5 px-3 rounded-lg bg-yellow-brand hover:bg-yellow-hover text-[oklch(0.12_0_0)] font-medium text-sm transition-colors shadow-none border-0 outline-none focus-visible:ring-2 focus-visible:ring-yellow-brand focus-visible:ring-offset-2">
@@ -212,27 +211,27 @@ export function Navbar() {
           <DropdownMenu>
             <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-yellow-brand focus-visible:ring-offset-2">
               <Avatar className="h-7 w-7">
-                <AvatarImage src={currentUser.avatarUrl} alt={currentUser.displayName} />
+                <AvatarImage src={user?.image ?? undefined} alt={user?.name ?? ""} />
                 <AvatarFallback className="bg-yellow-light text-xs font-medium">
-                  {currentUser.displayName[0]}
+                  {user?.name?.[0] ?? "?"}
                 </AvatarFallback>
               </Avatar>
               <ChevronDown className="w-3 h-3 text-muted-foreground" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
               <div className="px-3 py-2">
-                <p className="text-sm font-medium">{currentUser.displayName}</p>
-                <p className="text-xs text-muted-foreground">@{currentUser.username}</p>
+                <p className="text-sm font-medium">{user?.name}</p>
+                <p className="text-xs text-muted-foreground">@{user?.username}</p>
               </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => router.push(`/${currentUser.username}`)}>
+              <DropdownMenuItem onClick={() => router.push(`/${user?.username}`)}>
                 Your profile
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push("/settings")}>
                 Settings
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onClick={() => router.push("/login")}>
+              <DropdownMenuItem variant="destructive" onClick={() => signOut({ callbackUrl: "/login" })}>
                 Sign out
               </DropdownMenuItem>
             </DropdownMenuContent>

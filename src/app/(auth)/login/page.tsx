@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Mail, Lock, GitFork } from "lucide-react";
+import { signIn } from "next-auth/react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -18,10 +19,13 @@ export default function LoginPage() {
     setError("");
     if (!email || !password) { setError("Please fill in all fields."); return; }
     setLoading(true);
-    // Simulate auth — in Phase 2 this calls NextAuth
-    await new Promise((r) => setTimeout(r, 900));
+    const result = await signIn("credentials", { email, password, redirect: false });
     setLoading(false);
-    router.push("/feed");
+    if (result?.error) {
+      setError("Invalid email or password");
+    } else {
+      router.push("/feed");
+    }
   };
 
   return (
@@ -38,7 +42,7 @@ export default function LoginPage() {
       {/* Google SSO */}
       <button
         type="button"
-        onClick={() => router.push("/feed")}
+        onClick={() => signIn("google", { callbackUrl: "/feed" })}
         className="w-full flex items-center justify-center gap-3 h-10 rounded-xl border border-border bg-card hover:bg-muted text-sm font-medium text-foreground transition-colors mb-4"
       >
         {/* Google G */}

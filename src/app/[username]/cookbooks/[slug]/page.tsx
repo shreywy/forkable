@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { MOCK_COOKBOOKS, MOCK_RECIPES, MOCK_USERS } from "@/lib/mock-data";
+import { MOCK_COOKBOOKS, MOCK_RECIPES, MOCK_USERS, toCardData } from "@/lib/mock-data";
 import { RecipeCard } from "@/components/RecipeCard";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { BookOpen, Users, Plus } from "lucide-react";
@@ -136,7 +136,7 @@ export default async function CookbookPage({ params }: Props) {
           {recipes.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {recipes.map((recipe) => (
-                <RecipeCard key={recipe.id} recipe={recipe} />
+                <RecipeCard key={recipe.id} recipe={toCardData(recipe)} />
               ))}
             </div>
           ) : (

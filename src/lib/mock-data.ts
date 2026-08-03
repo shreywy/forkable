@@ -1,5 +1,31 @@
 // ─── Mock data for Phase 1 UI development ────────────────────────────────────
 // No database calls. Replace with real Prisma queries in Phase 2.
+import type { RecipeCardData } from "@/lib/types";
+
+/** Convert a MockRecipe to the RecipeCardData shape expected by RecipeCard */
+export function toCardData(r: MockRecipe): RecipeCardData {
+  return {
+    id: r.id,
+    slug: r.slug,
+    name: r.name,
+    description: r.description,
+    imageUrl: r.imageUrl,
+    author: {
+      username: r.owner.username,
+      displayName: r.owner.displayName,
+      avatarUrl: r.owner.avatarUrl,
+    },
+    forkedFrom: r.forkedFrom
+      ? { ownerUsername: r.forkedFrom.owner, recipeSlug: r.forkedFrom.recipe }
+      : null,
+    starCount: r.stars,
+    forkCount: r.forks,
+    tasteTestCount: r.tastings,
+    tweakCount: r.tweaks,
+    tags: r.tags.map((t) => ({ name: t, label: t })),
+    updatedAt: r.updatedAt,
+  };
+}
 
 export type MockUser = {
   username: string;

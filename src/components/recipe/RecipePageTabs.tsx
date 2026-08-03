@@ -20,28 +20,28 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { FileTree } from "@/components/recipe/FileTree";
-import type { MockRecipe, MockTweak, MockTasteTest } from "@/lib/mock-data";
+import type { RecipePageData, TweakData, TasteTestData, RecipeCardData } from "@/lib/types";
 
 type Tab = "recipe" | "tweaks" | "forks" | "taste-tests";
 
 interface Props {
-  recipe: MockRecipe;
-  tweaks: MockTweak[];
-  tasteTsts: MockTasteTest[];
-  forks: MockRecipe[];
+  recipe: RecipePageData;
+  tweaks: TweakData[];
+  tasteTsts: TasteTestData[];
+  forks: RecipeCardData[];
 }
 
 export function RecipePageTabs({ recipe, tweaks, tasteTsts, forks }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("recipe");
   const [copied, setCopied] = useState(false);
   const router = useRouter();
-  const owner = recipe.owner;
+  const owner = recipe.author;
 
   const tabs = [
     { id: "recipe"      as Tab, icon: <BookOpen className="w-3.5 h-3.5" />,            label: "Recipe",      count: null },
-    { id: "tweaks"      as Tab, icon: <GitCommitHorizontal className="w-3.5 h-3.5" />, label: "Tweaks",      count: recipe.tweaks },
-    { id: "forks"       as Tab, icon: <GitFork className="w-3.5 h-3.5" />,             label: "Forks",       count: recipe.forks },
-    { id: "taste-tests" as Tab, icon: <ChefHat className="w-3.5 h-3.5" />,            label: "Taste Tests", count: recipe.tastings },
+    { id: "tweaks"      as Tab, icon: <GitCommitHorizontal className="w-3.5 h-3.5" />, label: "Tweaks",      count: recipe.tweakCount },
+    { id: "forks"       as Tab, icon: <GitFork className="w-3.5 h-3.5" />,             label: "Forks",       count: recipe.forkCount },
+    { id: "taste-tests" as Tab, icon: <ChefHat className="w-3.5 h-3.5" />,            label: "Taste Tests", count: recipe.tasteTestCount },
   ];
 
   const handleCopyLink = () => {
@@ -73,7 +73,7 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts, forks }: Props) {
               className="flex items-center gap-1.5 text-foreground hover:text-yellow-brand font-medium transition-colors"
             >
               <Avatar className="h-5 w-5">
-                <AvatarImage src={owner.avatarUrl} />
+                <AvatarImage src={owner.avatarUrl ?? undefined} />
                 <AvatarFallback className="text-[10px] bg-yellow-light">
                   {owner.displayName[0]}
                 </AvatarFallback>
@@ -98,10 +98,10 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts, forks }: Props) {
                 <GitFork className="w-3 h-3" />
                 forked from{" "}
                 <Link
-                  href={`/${recipe.forkedFrom.owner}/${recipe.forkedFrom.recipe}`}
+                  href={`/${recipe.forkedFrom.ownerUsername}/${recipe.forkedFrom.recipeSlug}`}
                   className="hover:text-yellow-brand hover:underline transition-colors"
                 >
-                  {recipe.forkedFrom.owner}/{recipe.forkedFrom.recipe}
+                  {recipe.forkedFrom.ownerUsername}/{recipe.forkedFrom.recipeSlug}
                 </Link>
               </span>
             )}
@@ -113,13 +113,13 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts, forks }: Props) {
             <ActionButton
               icon={<Star className="w-3.5 h-3.5" />}
               label="Star"
-              count={recipe.stars}
+              count={recipe.starCount}
               highlight
             />
             <ActionButton
               icon={<GitFork className="w-3.5 h-3.5" />}
               label="Fork"
-              count={recipe.forks}
+              count={recipe.forkCount}
             />
 
             <div className="ml-auto flex items-center gap-2">
@@ -231,25 +231,27 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts, forks }: Props) {
 
                 {/* README */}
                 <SectionFile icon={<BookOpen className="w-3.5 h-3.5" />} filename="README.md">
-                  <div className="relative h-52 rounded-lg overflow-hidden mb-5 bg-muted">
-                    <Image
-                      src={recipe.imageUrl}
-                      alt={recipe.name}
-                      fill
-                      className="object-cover"
-                      sizes="800px"
-                    />
-                  </div>
+                  {recipe.imageUrl && (
+                    <div className="relative h-52 rounded-lg overflow-hidden mb-5 bg-muted">
+                      <Image
+                        src={recipe.imageUrl}
+                        alt={recipe.name}
+                        fill
+                        className="object-cover"
+                        sizes="800px"
+                      />
+                    </div>
+                  )}
                   <h2 className="text-xl font-bold text-foreground mb-2">{recipe.name}</h2>
                   <p className="text-muted-foreground leading-relaxed">{recipe.description}</p>
                   <div className="mt-4 flex flex-wrap gap-1.5">
                     {recipe.tags.map((tag) => (
                       <Badge
-                        key={tag}
+                        key={tag.name}
                         variant="secondary"
                         className="bg-yellow-muted text-foreground/70 border-0 text-xs font-normal"
                       >
-                        {tag}
+                        {tag.label}
                       </Badge>
                     ))}
                   </div>
@@ -280,20 +282,20 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts, forks }: Props) {
                   filename="macros.json"
                   rightSlot={
                     <span className="text-[11px] text-muted-foreground">
-                      per serving · {recipe.macros.servings} servings
+                      per serving · {recipe.servings} servings
                     </span>
                   }
                 >
                   <div className="grid grid-cols-5 divide-x divide-border -mx-6">
                     {[
-                      { label: "Calories", value: recipe.macros.calories, unit: "kcal" },
-                      { label: "Protein",  value: recipe.macros.protein,  unit: "g" },
-                      { label: "Carbs",    value: recipe.macros.carbs,    unit: "g" },
-                      { label: "Fat",      value: recipe.macros.fat,      unit: "g" },
-                      { label: "Fiber",    value: recipe.macros.fiber,    unit: "g" },
+                      { label: "Calories", value: recipe.calories,  unit: "kcal" },
+                      { label: "Protein",  value: recipe.proteinG,  unit: "g" },
+                      { label: "Carbs",    value: recipe.carbsG,    unit: "g" },
+                      { label: "Fat",      value: recipe.fatG,      unit: "g" },
+                      { label: "Fiber",    value: recipe.fiberG,    unit: "g" },
                     ].map((m) => (
                       <div key={m.label} className="flex flex-col items-center py-3 px-2">
-                        <span className="text-xl font-bold text-foreground">{m.value}</span>
+                        <span className="text-xl font-bold text-foreground">{m.value ?? "–"}</span>
                         <span className="text-[10px] text-muted-foreground">{m.unit}</span>
                         <span className="text-xs text-muted-foreground mt-0.5">{m.label}</span>
                       </div>
@@ -330,7 +332,7 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts, forks }: Props) {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-muted-foreground">
-                    <span className="font-medium text-foreground">{recipe.forks}</span> forks of this
+                    <span className="font-medium text-foreground">{recipe.forkCount}</span> forks of this
                     recipe
                   </p>
                   <button className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-yellow-brand hover:bg-yellow-hover text-[oklch(0.12_0_0)] text-xs font-medium transition-colors">
@@ -344,31 +346,33 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts, forks }: Props) {
                     {forks.map((fork) => (
                       <Link
                         key={fork.id}
-                        href={`/${fork.owner.username}/${fork.slug}`}
+                        href={`/${fork.author.username}/${fork.slug}`}
                         className="flex gap-4 p-4 rounded-xl border border-border bg-card hover:border-yellow-brand transition-all group"
                       >
                         <div className="shrink-0 w-14 h-14 rounded-lg overflow-hidden bg-muted">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={fork.imageUrl}
-                            alt={fork.name}
-                            className="w-full h-full object-cover"
-                          />
+                          {fork.imageUrl && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={fork.imageUrl}
+                              alt={fork.name}
+                              className="w-full h-full object-cover"
+                            />
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <Avatar className="h-4 w-4">
-                              <AvatarImage src={fork.owner.avatarUrl} />
+                              <AvatarImage src={fork.author.avatarUrl ?? undefined} />
                               <AvatarFallback className="text-[8px] bg-yellow-light">
-                                {fork.owner.displayName[0]}
+                                {fork.author.displayName[0]}
                               </AvatarFallback>
                             </Avatar>
                             <span className="text-xs text-muted-foreground">
-                              {fork.owner.username}
+                              {fork.author.username}
                             </span>
                             <span className="text-xs text-muted-foreground">·</span>
                             <span className="text-xs text-muted-foreground">
-                              updated {fork.updatedAt}
+                              updated {typeof fork.updatedAt === "string" ? fork.updatedAt : fork.updatedAt.toLocaleDateString()}
                             </span>
                           </div>
                           <p className="text-sm font-semibold text-foreground group-hover:text-yellow-brand transition-colors">
@@ -380,11 +384,11 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts, forks }: Props) {
                           <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <Star className="w-3 h-3" />
-                              {fork.stars.toLocaleString()}
+                              {fork.starCount.toLocaleString()}
                             </span>
                             <span className="flex items-center gap-1">
                               <GitCommitHorizontal className="w-3 h-3" />
-                              {fork.tweaks} tweaks
+                              {fork.tweakCount} tweaks
                             </span>
                           </div>
                         </div>
@@ -461,7 +465,7 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts, forks }: Props) {
                     <span className="font-medium text-foreground">{tasteTsts.length}</span> taste
                     tests -{" "}
                     <span className="text-yellow-brand font-medium">
-                      {tasteTsts.filter((t) => t.type === "suggestion" && t.status === "open").length}{" "}
+                      {tasteTsts.filter((t) => t.type === "SUGGESTION" && t.status === "OPEN").length}{" "}
                       open suggestions
                     </span>
                   </p>
@@ -473,7 +477,7 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts, forks }: Props) {
 
                 <div className="space-y-3">
                   {tasteTsts.map((tt) =>
-                    tt.type === "suggestion" ? (
+                    tt.type === "SUGGESTION" ? (
                       <SuggestionCard key={tt.id} tt={tt} />
                     ) : (
                       <CommentCard key={tt.id} tt={tt} />
@@ -495,11 +499,11 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts, forks }: Props) {
                 <div className="mt-3 flex flex-wrap gap-1">
                   {recipe.tags.map((tag) => (
                     <Badge
-                      key={tag}
+                      key={tag.name}
                       variant="secondary"
                       className="bg-yellow-muted text-foreground/70 border-0 text-xs font-normal"
                     >
-                      {tag}
+                      {tag.label}
                     </Badge>
                   ))}
                 </div>
@@ -509,22 +513,22 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts, forks }: Props) {
                 <StatRow
                   icon={<Star className="w-4 h-4" />}
                   label="Stars"
-                  value={recipe.stars.toLocaleString()}
+                  value={recipe.starCount.toLocaleString()}
                 />
                 <StatRow
                   icon={<GitFork className="w-4 h-4" />}
                   label="Forks"
-                  value={recipe.forks.toString()}
+                  value={recipe.forkCount.toString()}
                 />
                 <StatRow
                   icon={<ChefHat className="w-4 h-4" />}
                   label="Taste Tests"
-                  value={recipe.tastings.toString()}
+                  value={recipe.tasteTestCount.toString()}
                 />
                 <StatRow
                   icon={<GitCommitHorizontal className="w-4 h-4" />}
                   label="Tweaks"
-                  value={recipe.tweaks.toString()}
+                  value={recipe.tweakCount.toString()}
                 />
               </div>
               <Separator />
@@ -539,7 +543,7 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts, forks }: Props) {
                           {tweak.message}
                         </p>
                         <p className="text-[11px] text-muted-foreground mt-0.5">
-                          {tweak.timestamp}
+                          {typeof tweak.createdAt === "string" ? tweak.createdAt : tweak.createdAt.toLocaleDateString()}
                         </p>
                       </div>
                     </div>
@@ -609,8 +613,9 @@ function SectionFile({
   );
 }
 
-function TweakRow({ tweak }: { tweak: MockTweak }) {
+function TweakRow({ tweak }: { tweak: TweakData }) {
   const [expanded, setExpanded] = useState(false);
+  const dateStr = typeof tweak.createdAt === "string" ? tweak.createdAt : tweak.createdAt.toLocaleDateString();
   return (
     <div className="px-4 py-3 hover:bg-muted/30 transition-colors">
       <div className="flex items-center gap-3">
@@ -625,12 +630,12 @@ function TweakRow({ tweak }: { tweak: MockTweak }) {
           <span className="text-xs text-green-500 font-mono">+{tweak.additions}</span>
           <span className="text-xs text-red-400 font-mono">-{tweak.deletions}</span>
           <Avatar className="h-5 w-5">
-            <AvatarImage src={tweak.author.avatarUrl} />
+            <AvatarImage src={tweak.author.avatarUrl ?? undefined} />
             <AvatarFallback className="text-[8px] bg-yellow-light">
               {tweak.author.displayName[0]}
             </AvatarFallback>
           </Avatar>
-          <span className="text-xs text-muted-foreground hidden sm:inline">{tweak.timestamp}</span>
+          <span className="text-xs text-muted-foreground hidden sm:inline">{dateStr}</span>
           <button
             onClick={() => setExpanded(!expanded)}
             className="text-muted-foreground hover:text-foreground transition-colors"
@@ -646,11 +651,11 @@ function TweakRow({ tweak }: { tweak: MockTweak }) {
       {expanded && (
         <div className="mt-3 ml-7 rounded-lg border border-border overflow-hidden text-xs font-mono">
           <div className="bg-green-500/10 border-b border-border px-3 py-2 text-green-600 dark:text-green-400">
-            + {tweak.message} - added by {tweak.author.username} on {tweak.timestamp}
+            + {tweak.message} - added by {tweak.author.username} on {dateStr}
           </div>
           <div className="px-3 py-2 text-muted-foreground bg-muted/30">
             <p className="text-[11px]">
-              sha: {tweak.id}a3f9c2d · {tweak.author.username} committed on {tweak.timestamp}
+              sha: {tweak.id}a3f9c2d · {tweak.author.username} committed on {dateStr}
             </p>
           </div>
         </div>
@@ -659,15 +664,16 @@ function TweakRow({ tweak }: { tweak: MockTweak }) {
   );
 }
 
-function SuggestionCard({ tt }: { tt: MockTasteTest }) {
+function SuggestionCard({ tt }: { tt: TasteTestData }) {
   const statusColor =
-    tt.status === "open"
+    tt.status === "OPEN"
       ? "text-green-500 bg-green-500/10 border-green-500/20"
-      : tt.status === "merged"
+      : tt.status === "MERGED"
         ? "text-purple-500 bg-purple-500/10 border-purple-500/20"
         : "text-muted-foreground bg-muted border-border";
   const StatusIcon =
-    tt.status === "merged" ? GitMerge : tt.status === "open" ? GitFork : X;
+    tt.status === "MERGED" ? GitMerge : tt.status === "OPEN" ? GitFork : X;
+  const dateStr = typeof tt.createdAt === "string" ? tt.createdAt : tt.createdAt.toLocaleDateString();
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -676,23 +682,23 @@ function SuggestionCard({ tt }: { tt: MockTasteTest }) {
           className={`mt-0.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-medium shrink-0 ${statusColor}`}
         >
           <StatusIcon className="w-3 h-3" />
-          {tt.status}
+          {tt.status.toLowerCase()}
         </span>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-foreground">{tt.title}</p>
           <div className="flex items-center gap-2 mt-1">
             <Avatar className="h-4 w-4">
-              <AvatarImage src={tt.author.avatarUrl} />
+              <AvatarImage src={tt.author.avatarUrl ?? undefined} />
               <AvatarFallback className="text-[8px] bg-yellow-light">
                 {tt.author.displayName[0]}
               </AvatarFallback>
             </Avatar>
             <span className="text-xs text-muted-foreground">
-              by {tt.author.username} · {tt.timestamp}
+              by {tt.author.username} · {dateStr}
             </span>
           </div>
         </div>
-        {tt.status === "open" && (
+        {tt.status === "OPEN" && (
           <div className="flex gap-2 shrink-0">
             <button className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md bg-green-500/10 hover:bg-green-500/20 text-green-600 dark:text-green-400 text-xs font-medium transition-colors border border-green-500/20">
               <Check className="w-3 h-3" /> Merge
@@ -726,11 +732,12 @@ function SuggestionCard({ tt }: { tt: MockTasteTest }) {
   );
 }
 
-function CommentCard({ tt }: { tt: MockTasteTest }) {
+function CommentCard({ tt }: { tt: TasteTestData }) {
+  const dateStr = typeof tt.createdAt === "string" ? tt.createdAt : tt.createdAt.toLocaleDateString();
   return (
     <div className="flex gap-3 p-4 rounded-xl border border-border bg-card">
       <Avatar className="h-8 w-8 shrink-0 mt-0.5">
-        <AvatarImage src={tt.author.avatarUrl} />
+        <AvatarImage src={tt.author.avatarUrl ?? undefined} />
         <AvatarFallback className="text-xs bg-yellow-light">
           {tt.author.displayName[0]}
         </AvatarFallback>
@@ -738,7 +745,7 @@ function CommentCard({ tt }: { tt: MockTasteTest }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-2">
           <span className="text-sm font-medium text-foreground">{tt.author.displayName}</span>
-          <span className="text-xs text-muted-foreground">· {tt.timestamp}</span>
+          <span className="text-xs text-muted-foreground">· {dateStr}</span>
           {tt.rating && (
             <span className="ml-auto flex items-center gap-0.5">
               {Array.from({ length: 5 }).map((_, i) => (

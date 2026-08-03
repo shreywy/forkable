@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Mail, Lock, User, GitFork, Check, X } from "lucide-react";
+import { signIn } from "next-auth/react";
+import { registerUser } from "@/lib/actions/auth";
 
 function PasswordStrength({ password }: { password: string }) {
   const checks = [
@@ -59,9 +61,13 @@ export default function SignupPage() {
     if (!displayName || !email || !password) { setError("Please fill in all fields."); return; }
     if (password.length < 8) { setError("Password must be at least 8 characters."); return; }
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 900));
+    const result = await registerUser({ displayName, username, email, password });
     setLoading(false);
-    router.push("/onboarding");
+    if (result.error) {
+      setError(result.error);
+    } else {
+      router.push("/onboarding");
+    }
   };
 
   return (
@@ -78,7 +84,7 @@ export default function SignupPage() {
       {/* Google SSO */}
       <button
         type="button"
-        onClick={() => router.push("/onboarding")}
+        onClick={() => signIn("google", { callbackUrl: "/onboarding" })}
         className="w-full flex items-center justify-center gap-3 h-10 rounded-xl border border-border bg-card hover:bg-muted text-sm font-medium text-foreground transition-colors mb-4"
       >
         <svg width="16" height="16" viewBox="0 0 24 24">

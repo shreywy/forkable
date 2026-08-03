@@ -3,20 +3,20 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  Star, GitFork, Users, BookOpen, Library, BookMarked,
+  Star, GitFork, BookOpen, Library, BookMarked,
 } from "lucide-react";
 import { RecipeCard } from "@/components/RecipeCard";
-import type { MockRecipe, MockCookbook } from "@/lib/mock-data";
+import type { RecipeCardData, CookbookData } from "@/lib/types";
 
 type Tab = "recipes" | "cookbooks" | "forks" | "starred";
 
 interface Props {
   username: string;
-  userRecipes: MockRecipe[];
-  forkedRecipes: MockRecipe[];
-  userCookbooks: MockCookbook[];
-  starredRecipes: MockRecipe[];
-  coverRecipes: Record<string, MockRecipe | undefined>;
+  userRecipes: RecipeCardData[];
+  forkedRecipes: RecipeCardData[];
+  userCookbooks: CookbookData[];
+  starredRecipes: RecipeCardData[];
+  coverRecipes: Record<string, RecipeCardData | undefined>;
 }
 
 export function ProfileTabs({
@@ -89,7 +89,7 @@ export function ProfileTabs({
                     className="flex gap-3 p-3 rounded-xl border border-border bg-card hover:border-yellow-brand hover:bg-yellow-subtle dark:hover:bg-muted transition-all group"
                   >
                     <div className="shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-muted">
-                      {cover && (
+                      {cover?.imageUrl && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={cover.imageUrl}
@@ -106,12 +106,8 @@ export function ProfileTabs({
                         {cb.description}
                       </p>
                       <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground flex-wrap">
-                        <span>{cb.recipeIds.length} recipes</span>
+                        <span>{cb.recipeCount} recipes</span>
                         <span>·</span>
-                        <span className="flex items-center gap-1">
-                          <Users className="w-3 h-3" />
-                          {cb.followers} followers
-                        </span>
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground">
                           {cb.isPublic ? "Public" : "Private"}
                         </span>
@@ -139,16 +135,18 @@ export function ProfileTabs({
               {forkedRecipes.map((recipe) => (
                 <Link
                   key={recipe.id}
-                  href={`/${recipe.owner.username}/${recipe.slug}`}
+                  href={`/${recipe.author.username}/${recipe.slug}`}
                   className="flex gap-4 p-4 rounded-xl border border-border bg-card hover:border-yellow-brand transition-all group"
                 >
                   <div className="shrink-0 w-14 h-14 rounded-lg overflow-hidden bg-muted">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={recipe.imageUrl}
-                      alt={recipe.name}
-                      className="w-full h-full object-cover"
-                    />
+                    {recipe.imageUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={recipe.imageUrl}
+                        alt={recipe.name}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-foreground group-hover:text-yellow-brand transition-colors">
@@ -159,7 +157,7 @@ export function ProfileTabs({
                         <GitFork className="w-3 h-3" />
                         forked from{" "}
                         <span className="text-foreground">
-                          {recipe.forkedFrom.owner}/{recipe.forkedFrom.recipe}
+                          {recipe.forkedFrom.ownerUsername}/{recipe.forkedFrom.recipeSlug}
                         </span>
                       </p>
                     )}
@@ -169,13 +167,13 @@ export function ProfileTabs({
                     <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Star className="w-3 h-3" />
-                        {recipe.stars.toLocaleString()}
+                        {recipe.starCount.toLocaleString()}
                       </span>
                       <span className="flex items-center gap-1">
                         <GitFork className="w-3 h-3" />
-                        {recipe.forks}
+                        {recipe.forkCount}
                       </span>
-                      <span className="text-[11px]">Updated {recipe.updatedAt}</span>
+                      <span className="text-[11px]">Updated {typeof recipe.updatedAt === "string" ? recipe.updatedAt : recipe.updatedAt.toLocaleDateString()}</span>
                     </div>
                   </div>
                 </Link>

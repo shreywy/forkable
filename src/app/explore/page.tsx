@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { RecipeCard } from "@/components/RecipeCard";
-import { MOCK_RECIPES, MOCK_COOKBOOKS, MOCK_USERS } from "@/lib/mock-data";
+import { MOCK_RECIPES, MOCK_COOKBOOKS, MOCK_USERS, toCardData } from "@/lib/mock-data";
 import {
   Search, SlidersHorizontal, Flame, Leaf, Cake,
   Coffee, Globe, Soup, Beef, Fish, Library, Users,
@@ -394,7 +394,7 @@ export default function ExplorePage() {
                   />
                   {directMatches.length > 0 ? (
                     <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {directMatches.map((r) => <RecipeCard key={r.id} recipe={r} />)}
+                      {directMatches.map((r) => <RecipeCard key={r.id} recipe={toCardData(r)} />)}
                     </div>
                   ) : (
                     <p className="mt-4 text-sm text-muted-foreground">No direct matches found.</p>
@@ -415,7 +415,7 @@ export default function ExplorePage() {
                       <div className="flex-1 h-px bg-border ml-1" />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {indirectMatches.map((r) => <RecipeCard key={r.id} recipe={r} />)}
+                      {indirectMatches.map((r) => <RecipeCard key={r.id} recipe={toCardData(r)} />)}
                     </div>
                   </section>
                 )}
@@ -427,7 +427,7 @@ export default function ExplorePage() {
                   <SectionHeading title="All recipes" count={directMatches.length} />
                   {directMatches.length > 0 ? (
                     <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {directMatches.map((r) => <RecipeCard key={r.id} recipe={r} />)}
+                      {directMatches.map((r) => <RecipeCard key={r.id} recipe={toCardData(r)} />)}
                     </div>
                   ) : (
                     <p className="mt-4 text-sm text-muted-foreground">

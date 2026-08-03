@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { RecipeCard } from "@/components/RecipeCard";
-import { MOCK_RECIPES, MOCK_USERS } from "@/lib/mock-data";
+import { MOCK_RECIPES, MOCK_USERS, toCardData } from "@/lib/mock-data";
 import { TrendingUp, GitFork, Star, ChefHat, Flame } from "lucide-react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -89,7 +89,7 @@ export default function TrendingPage() {
           />
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {hotNow.map((recipe) => (
-              <RecipeCard key={recipe.id} recipe={recipe} />
+              <RecipeCard key={recipe.id} recipe={toCardData(recipe)} />
             ))}
           </div>
         </section>
