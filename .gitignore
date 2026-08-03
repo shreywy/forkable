@@ -50,6 +50,7 @@ next-env.d.ts
 skills-lock.json
 AGENTS.md
 CLAUDE.md
+INTERVIEW_PREP.html
 
 # env example should be committed — only ignore real env files
 !.env.example
