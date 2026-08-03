@@ -42,12 +42,14 @@ next-env.d.ts
 
 /src/generated/prisma
 
-# IDE & AI tool directories
+# AI tool directories and context files (local only)
 .agents/
 .claude/
 .windsurf/
 .playwright-mcp/
 skills-lock.json
+AGENTS.md
+CLAUDE.md
 
 # env example should be committed — only ignore real env files
 !.env.example

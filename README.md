@@ -176,9 +176,9 @@ npm run db:generate   # prisma generate
 - [x] 15-model Prisma schema + migrations
 - [x] NextAuth v5 (Google OAuth + Credentials)
 - [x] Server Actions with Zod validation
-- [x] Cloudflare R2 presigned image upload
 - [x] OpenFoodFacts nutrition proxy with DB caching
 - [x] Zero-LLM recipe URL import
+- [ ] Cloudflare R2 image upload (presign endpoint built, pending bucket setup)
 - [ ] Wire all pages to real DB (homepage, recipe, profile, explore, feed)
 - [ ] Taste Test diff view
 - [ ] Real-time notifications (Pusher / SSE)
