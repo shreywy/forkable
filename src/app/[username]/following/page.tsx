@@ -2,35 +2,41 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Users, ArrowLeft, Star, BookOpen } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MOCK_USERS } from "@/lib/mock-data";
+import { prisma } from "@/lib/prisma";
 
 interface Props {
   params: Promise<{ username: string }>;
 }
 
-// Mock following data — in Phase 2 these come from the DB
-const MOCK_FOLLOWING: Record<string, string[]> = {
-  shrey:            ["nonna_rosa", "vegan_vivienne", "kenji_tokyo"],
-  nonna_rosa:       ["shrey", "vegan_vivienne"],
-  vegan_vivienne:   ["nonna_rosa", "kenji_tokyo", "shrey"],
-  gluten_free_gary: ["nonna_rosa", "shrey"],
-  kenji_tokyo:      ["nonna_rosa", "vegan_vivienne"],
-};
-
 export default async function FollowingPage({ params }: Props) {
   const { username } = await params;
-  const user = MOCK_USERS[username];
+
+  const user = await prisma.user.findUnique({
+    where: { username },
+    select: { id: true },
+  });
   if (!user) notFound();
 
-  const followingUsernames = MOCK_FOLLOWING[username] ?? [];
-  const following = followingUsernames
-    .map((u) => MOCK_USERS[u])
-    .filter(Boolean);
+  const follows = await prisma.follow.findMany({
+    where: { followerId: user.id },
+    include: {
+      following: {
+        select: {
+          username: true,
+          displayName: true,
+          avatarUrl: true,
+          bio: true,
+          _count: { select: { recipes: true, followers: true } },
+        },
+      },
+    },
+  });
+
+  const following = follows.map((f) => f.following);
 
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-[640px] mx-auto px-4 py-10">
-        {/* Header */}
         <div className="mb-6">
           <Link
             href={`/${username}`}
@@ -50,7 +56,6 @@ export default async function FollowingPage({ params }: Props) {
           </p>
         </div>
 
-        {/* List */}
         <div className="space-y-3">
           {following.length === 0 ? (
             <div className="text-center py-16">
@@ -65,7 +70,7 @@ export default async function FollowingPage({ params }: Props) {
                 className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:border-yellow-brand transition-all group"
               >
                 <Avatar className="h-12 w-12 shrink-0">
-                  <AvatarImage src={cook.avatarUrl} alt={cook.displayName} />
+                  <AvatarImage src={cook.avatarUrl ?? undefined} alt={cook.displayName} />
                   <AvatarFallback className="bg-yellow-light text-sm font-bold">
                     {cook.displayName[0]}
                   </AvatarFallback>
@@ -82,11 +87,11 @@ export default async function FollowingPage({ params }: Props) {
                 <div className="shrink-0 flex items-center gap-4 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <BookOpen className="w-3.5 h-3.5" />
-                    {cook.recipeCount}
+                    {cook._count.recipes}
                   </span>
                   <span className="flex items-center gap-1">
                     <Star className="w-3.5 h-3.5" />
-                    {cook.followers}
+                    {cook._count.followers}
                   </span>
                 </div>
               </Link>

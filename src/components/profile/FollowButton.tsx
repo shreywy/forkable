@@ -8,9 +8,10 @@ interface Props {
   isOwnProfile?: boolean;
   initialIsFollowing?: boolean;
   initialFollowerCount?: number;
+  compact?: boolean;
 }
 
-export function FollowButton({ username, isOwnProfile, initialIsFollowing = false, initialFollowerCount }: Props) {
+export function FollowButton({ username, isOwnProfile, initialIsFollowing = false, initialFollowerCount, compact = false }: Props) {
   const [following, setFollowing] = useState(initialIsFollowing);
   const [followerCount, setFollowerCount] = useState(initialFollowerCount);
   const [loading, setLoading] = useState(false);
@@ -59,7 +60,7 @@ export function FollowButton({ username, isOwnProfile, initialIsFollowing = fals
   };
 
   return (
-    <div className="mt-4 space-y-1">
+    <div className={compact ? "" : "mt-4 space-y-1"}>
       <button
         onClick={handleClick}
         disabled={loading}

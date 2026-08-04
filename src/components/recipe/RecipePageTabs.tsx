@@ -4,7 +4,7 @@ import { useState } from "react";
 
 function fmtDate(d: Date | string): string {
   const date = typeof d === "string" ? new Date(d) : d;
-  return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
 }
 import Image from "next/image";
 import Link from "next/link";

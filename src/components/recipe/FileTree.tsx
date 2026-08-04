@@ -73,7 +73,7 @@ function getFileContent(filename: string, recipe: RecipePageData, folder?: strin
 
   if (filename === "assembly.md" || filename === "README.md") {
     const tagStr = recipe.tags.map((t) => t.label).join(", ");
-    const updatedStr = new Date(recipe.updatedAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+    const updatedStr = new Date(recipe.updatedAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
     return `# ${recipe.name}\n\n${recipe.description}\n\n**Tags:** ${tagStr}\n\n**Last updated:** ${updatedStr}`;
   }
 
@@ -82,8 +82,10 @@ function getFileContent(filename: string, recipe: RecipePageData, folder?: strin
 
 function formatRelative(dateStr: Date | string): string {
   const date = new Date(dateStr);
-  const now = new Date();
-  const diffDays = Math.floor((now.getTime() - date.getTime()) / 86400000);
+  // Use UTC midnight for both dates so server and client agree on "today"
+  const nowUtc = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate());
+  const dateUtc = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+  const diffDays = Math.floor((nowUtc - dateUtc) / 86400000);
   if (diffDays === 0) return "today";
   if (diffDays === 1) return "yesterday";
   if (diffDays < 7) return `${diffDays}d ago`;

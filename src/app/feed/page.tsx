@@ -1,11 +1,12 @@
 import Link from "next/link";
 import {
   Star, GitFork, ChefHat, GitCommitHorizontal,
-  Rss, BookOpen, UserPlus,
+  Rss, BookOpen,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { FollowButton } from "@/components/profile/FollowButton";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -355,10 +356,7 @@ export default async function FeedPage() {
                         </Link>
                         <p className="text-xs text-muted-foreground">@{u.username}</p>
                       </div>
-                      <button className="shrink-0 h-7 px-3 rounded-lg bg-yellow-brand hover:bg-yellow-hover text-[oklch(0.12_0_0)] text-xs font-medium transition-colors flex items-center gap-1">
-                        <UserPlus className="w-3 h-3" />
-                        Follow
-                      </button>
+                      <FollowButton username={u.username} compact />
                     </div>
                   ))}
                 </div>
