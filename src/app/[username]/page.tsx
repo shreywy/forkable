@@ -110,6 +110,13 @@ export default async function ProfilePage({ params }: Props) {
 
   const isOwnProfile = session?.user && (session.user as { username?: string }).username === username;
 
+  // Check if the logged-in user is already following this profile
+  const sessionUserId = (session?.user as { id?: string } | null)?.id;
+  const isFollowing = !!(sessionUserId && !isOwnProfile && await prisma.follow.findUnique({
+    where: { followerId_followingId: { followerId: sessionUserId, followingId: user.id } },
+    select: { followerId: true },
+  }));
+
   // Map recipes
   const userRecipes: RecipeCardData[] = user.recipes.map(mapRecipe);
   const forkedRecipes = userRecipes.filter((r) => r.forkedFrom !== null);
@@ -191,6 +198,8 @@ export default async function ProfilePage({ params }: Props) {
             <FollowButton
               username={username}
               isOwnProfile={!!isOwnProfile}
+              initialIsFollowing={isFollowing}
+              initialFollowerCount={user._count.followers}
             />
 
             <Separator className="my-4" />

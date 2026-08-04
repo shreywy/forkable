@@ -45,6 +45,7 @@ export default async function ExplorePage() {
     }),
 
     prisma.ingredient.findMany({
+      distinct: ["name"],
       select: { name: true },
       orderBy: { name: "asc" },
     }),

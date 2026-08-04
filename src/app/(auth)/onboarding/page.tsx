@@ -6,7 +6,7 @@ import { useTheme } from "next-themes";
 import {
   Camera, MapPin, Globe, AtSign,
   Check, ChevronRight, ChevronLeft,
-  Sparkles, Sun, Moon, Monitor, UserPlus, Utensils, Link2,
+  Sparkles, Sun, Moon, Monitor, UserPlus, Utensils, Link2, Loader2,
 } from "lucide-react";
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -189,7 +189,7 @@ export default function OnboardingPage() {
       // if save fails, still proceed
     }
     setSaving(false);
-    router.push("/feed");
+    router.push("/explore");
   };
 
   const totalSteps = STEPS.length;
@@ -267,32 +267,36 @@ export default function OnboardingPage() {
               Upload photo
             </button>
 
-            {/* DiceBear avatar picker */}
-            {!avatarUrl && (
-              <div className="flex gap-2 flex-wrap justify-center">
-                {AVATAR_SEEDS.map((seed) => {
-                  const url = `https://api.dicebear.com/9.x/lorelei/svg?seed=${seed}`;
-                  return (
-                    <button
-                      key={seed}
-                      type="button"
-                      onClick={() => setAvatarUrl(url)}
-                      className="w-9 h-9 rounded-full overflow-hidden border-2 border-border hover:border-yellow-brand transition-colors bg-muted"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={url}
-                        alt={seed}
-                        width={36}
-                        height={36}
-                        className="w-full h-full"
-                      />
-                    </button>
-                  );
-                })}
-                <span className="text-[10px] text-muted-foreground self-center ml-1">or pick an avatar</span>
-              </div>
-            )}
+            {/* DiceBear avatar picker — always visible so you can change your choice */}
+            <div className="flex gap-2 flex-wrap justify-center">
+              {AVATAR_SEEDS.map((seed) => {
+                const url = `https://api.dicebear.com/9.x/lorelei/svg?seed=${seed}`;
+                const isSelected = avatarUrl === url;
+                return (
+                  <button
+                    key={seed}
+                    type="button"
+                    onClick={() => setAvatarUrl(url)}
+                    title={seed}
+                    className={`w-9 h-9 rounded-full overflow-hidden border-2 transition-all bg-muted ${
+                      isSelected
+                        ? "border-yellow-brand ring-2 ring-yellow-brand/30 scale-110"
+                        : "border-border hover:border-yellow-brand/60"
+                    }`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={url}
+                      alt={seed}
+                      width={36}
+                      height={36}
+                      className="w-full h-full"
+                    />
+                  </button>
+                );
+              })}
+              <span className="text-[10px] text-muted-foreground self-center ml-1">or pick an avatar</span>
+            </div>
           </div>
 
           {/* Display name + username */}
@@ -629,7 +633,7 @@ export default function OnboardingPage() {
           className="flex items-center gap-2 px-6 h-10 rounded-xl bg-yellow-brand hover:bg-yellow-hover text-[oklch(0.12_0_0)] text-sm font-semibold transition-colors disabled:opacity-60"
         >
           {saving ? (
-            "Setting up your account…"
+            <><Loader2 className="w-4 h-4 animate-spin" /> Setting up your kitchen…</>
           ) : isLast ? (
             <><Sparkles className="w-4 h-4" /> Start cooking!</>
           ) : (

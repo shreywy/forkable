@@ -1215,6 +1215,7 @@ const FORK_RECIPES: ForkDef[] = [
     tags: ["vegan", "pasta", "italian", "quick"],
     starCount: 891,
     forkCount: 78,
+    imageUrl: "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=800&q=80",
   },
   {
     sourceSlug: "chicken-tikka-masala",
@@ -1252,6 +1253,7 @@ const FORK_RECIPES: ForkDef[] = [
     tags: ["gluten-free", "baking", "sweet", "dessert"],
     starCount: 1102,
     forkCount: 134,
+    imageUrl: "https://images.unsplash.com/photo-1605286978633-2dec93ff88a2?w=800&q=80",
   },
   // Spicier versions
   {
@@ -1278,6 +1280,7 @@ const FORK_RECIPES: ForkDef[] = [
     tags: ["japanese", "ramen", "soup", "chicken", "quick"],
     starCount: 1891,
     forkCount: 201,
+    imageUrl: "https://images.unsplash.com/photo-1569050467447-ce54b3bbc37d?w=800&q=80",
   },
   {
     sourceSlug: "beef-bourguignon",
@@ -1302,6 +1305,7 @@ const FORK_RECIPES: ForkDef[] = [
     tags: ["american", "beef", "comfort-food", "dinner"],
     starCount: 1456,
     forkCount: 189,
+    imageUrl: "https://images.unsplash.com/photo-1574894709920-11b28e7367e3?w=800&q=80",
   },
   // Korean fusion
   {
@@ -1353,6 +1357,7 @@ const FORK_RECIPES: ForkDef[] = [
     tags: ["french", "pasta", "dinner", "comfort-food", "vegetarian"],
     starCount: 4102,
     forkCount: 498,
+    imageUrl: "https://images.unsplash.com/photo-1612874742237-6526221588e3?w=800&q=80",
   },
   // Vegan BBQ
   {
@@ -1366,6 +1371,7 @@ const FORK_RECIPES: ForkDef[] = [
     tags: ["vegan", "bbq", "american"],
     starCount: 1892,
     forkCount: 221,
+    imageUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=800&q=80",
   },
   // High protein
   {
@@ -1379,6 +1385,7 @@ const FORK_RECIPES: ForkDef[] = [
     tags: ["thai", "chicken", "spicy", "dinner", "high-protein"],
     starCount: 2891,
     forkCount: 312,
+    imageUrl: "https://images.unsplash.com/photo-1528207776546-365bb710ee93?w=800&q=80",
   },
   // Birria variations
   {

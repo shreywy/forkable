@@ -164,6 +164,18 @@ export function ExploreClient({ recipes, cookbooks, featuredCooks, allIngredient
   // ── Ingredient catalog filtered ────────────────────────────────────────────
   const iq = ingredientQuery.trim().toLowerCase();
 
+  // Count how many recipes each ingredient appears in
+  const ingredientRecipeCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const r of recipes) {
+      for (const ing of r.ingredientNames) {
+        const key = ing.toLowerCase();
+        counts[key] = (counts[key] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }, [recipes]);
+
   const filteredIngredients = useMemo(() => {
     const base = iq
       ? allIngredients.filter((i) => i.name.toLowerCase().includes(iq))
@@ -173,9 +185,15 @@ export function ExploreClient({ recipes, cookbooks, featuredCooks, allIngredient
       const bSelected = selectedIngredients.has(b.name.toLowerCase());
       if (aSelected && !bSelected) return -1;
       if (!aSelected && bSelected) return 1;
+      // When no search, sort by recipe count (most-used first) for discoverability
+      if (!iq) {
+        const aCount = ingredientRecipeCounts[a.name.toLowerCase()] ?? 0;
+        const bCount = ingredientRecipeCounts[b.name.toLowerCase()] ?? 0;
+        if (bCount !== aCount) return bCount - aCount;
+      }
       return a.name.localeCompare(b.name);
     });
-  }, [iq, allIngredients, selectedIngredients]);
+  }, [iq, allIngredients, selectedIngredients, ingredientRecipeCounts]);
 
   const recipeMatches = useMemo(() => {
     if (selectedIngredients.size === 0) return [];
@@ -590,8 +608,8 @@ export function ExploreClient({ recipes, cookbooks, featuredCooks, allIngredient
                 <div className="flex items-center gap-2 px-3 py-2 bg-muted/40 border-b border-border">
                   <Package className="w-3.5 h-3.5 text-muted-foreground" />
                   <span className="text-xs font-medium text-muted-foreground">ingredient-catalog/</span>
-                  <span className="ml-auto text-[11px] text-muted-foreground">
-                    {filteredIngredients.length}
+                  <span className="ml-auto text-[11px] text-muted-foreground" title="Number of recipes using each ingredient">
+                    {filteredIngredients.length} · # recipes
                   </span>
                 </div>
                 <div className="divide-y divide-border max-h-[520px] overflow-y-auto">
@@ -602,6 +620,7 @@ export function ExploreClient({ recipes, cookbooks, featuredCooks, allIngredient
                   ) : (
                     filteredIngredients.map((ing) => {
                       const isSelected = selectedIngredients.has(ing.name.toLowerCase());
+                      const recipeCount = ingredientRecipeCounts[ing.name.toLowerCase()] ?? 0;
                       return (
                         <button
                           key={ing.name}
@@ -634,6 +653,11 @@ export function ExploreClient({ recipes, cookbooks, featuredCooks, allIngredient
                           <span className={`flex-1 text-sm ${isSelected ? "text-yellow-brand font-medium" : "text-foreground"}`}>
                             {ing.name}
                           </span>
+                          {recipeCount > 0 && (
+                            <span className={`text-[10px] tabular-nums shrink-0 ${isSelected ? "text-yellow-brand/70" : "text-muted-foreground/60"}`}>
+                              {recipeCount}
+                            </span>
+                          )}
                         </button>
                       );
                     })
