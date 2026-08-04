@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 
 function fmtDate(d: Date | string): string {
   const date = typeof d === "string" ? new Date(d) : d;
@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import {
   BookOpen, GitCommitHorizontal, GitFork, ChefHat,
   Star, Plus, GitMerge, X, Check, ChevronDown, ChevronUp,
-  Eye, Share2, Utensils, Copy, Pencil,
+  Eye, Share2, Utensils, Copy, Pencil, Loader2, Send, MessageSquare,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -25,34 +25,76 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { FileTree } from "@/components/recipe/FileTree";
-import type { RecipePageData, TweakData, TasteTestData, RecipeCardData } from "@/lib/types";
+import type { RecipePageData, TweakData, TasteTestData, TasteTestReplyData, RecipeCardData } from "@/lib/types";
 
 type Tab = "recipe" | "tweaks" | "forks" | "taste-tests";
+
+interface CurrentUser {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl?: string | null;
+}
 
 interface Props {
   recipe: RecipePageData;
   tweaks: TweakData[];
   tasteTsts: TasteTestData[];
   forks: RecipeCardData[];
+  currentUser?: CurrentUser | null;
+  /** If the current user already forked this recipe, the URL of their fork */
+  existingForkUrl?: string | null;
 }
 
-export function RecipePageTabs({ recipe, tweaks, tasteTsts, forks }: Props) {
+export function RecipePageTabs({ recipe, tweaks, tasteTsts: initialTasteTsts, forks, currentUser, existingForkUrl }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("recipe");
   const [copied, setCopied] = useState(false);
+  const [forking, setForking] = useState(false);
+  const [forkCount, setForkCount] = useState(recipe.forkCount);
+  const [myForkUrl, setMyForkUrl] = useState<string | null>(existingForkUrl ?? null);
+  const [tasteTsts, setTasteTsts] = useState<TasteTestData[]>(initialTasteTsts);
+  const [tasteTestCount, setTasteTestCount] = useState(recipe.tasteTestCount);
   const router = useRouter();
   const owner = recipe.author;
+  const isOwnRecipe = currentUser?.id !== undefined && recipe.author.username === currentUser?.username;
 
   const tabs = [
     { id: "recipe"      as Tab, icon: <BookOpen className="w-3.5 h-3.5" />,            label: "Recipe",      count: null },
     { id: "tweaks"      as Tab, icon: <GitCommitHorizontal className="w-3.5 h-3.5" />, label: "Tweaks",      count: recipe.tweakCount },
-    { id: "forks"       as Tab, icon: <GitFork className="w-3.5 h-3.5" />,             label: "Forks",       count: recipe.forkCount },
-    { id: "taste-tests" as Tab, icon: <ChefHat className="w-3.5 h-3.5" />,            label: "Taste Tests", count: recipe.tasteTestCount },
+    { id: "forks"       as Tab, icon: <GitFork className="w-3.5 h-3.5" />,             label: "Forks",       count: forkCount },
+    { id: "taste-tests" as Tab, icon: <ChefHat className="w-3.5 h-3.5" />,            label: "Taste Tests", count: tasteTestCount },
   ];
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleFork = async () => {
+    if (!currentUser) { router.push("/login"); return; }
+    if (myForkUrl) { router.push(myForkUrl); return; }
+    setForking(true);
+    try {
+      const res = await fetch("/api/fork", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceRecipeId: recipe.id }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        if (!data.alreadyForked) setForkCount((c) => c + 1);
+        setMyForkUrl(data.url);
+        router.push(data.url);
+      }
+    } finally {
+      setForking(false);
+    }
+  };
+
+  const handleAddTasteTest = (tt: TasteTestData) => {
+    setTasteTsts((prev) => [tt, ...prev]);
+    setTasteTestCount((c) => c + 1);
   };
 
   const shareOnX = () => {
@@ -121,11 +163,35 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts, forks }: Props) {
               count={recipe.starCount}
               highlight
             />
-            <ActionButton
-              icon={<GitFork className="w-3.5 h-3.5" />}
-              label="Fork"
-              count={recipe.forkCount}
-            />
+            {/* Fork button — live wired */}
+            {!isOwnRecipe && (
+              <button
+                onClick={handleFork}
+                disabled={forking}
+                className={`inline-flex items-center gap-1.5 h-7 px-3 rounded-lg border text-xs font-medium transition-colors ${
+                  myForkUrl
+                    ? "border-yellow-brand bg-yellow-subtle dark:bg-yellow-muted text-yellow-hover"
+                    : "border-border bg-background text-muted-foreground hover:text-foreground hover:border-yellow-brand/40"
+                }`}
+              >
+                {forking ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <GitFork className="w-3.5 h-3.5" />
+                )}
+                {myForkUrl ? "View your fork" : "Fork"}
+                <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-muted text-[10px] font-semibold">
+                  {forkCount}
+                </span>
+              </button>
+            )}
+            {isOwnRecipe && (
+              <ActionButton
+                icon={<GitFork className="w-3.5 h-3.5" />}
+                label="Fork"
+                count={forkCount}
+              />
+            )}
 
             <div className="ml-auto flex items-center gap-2">
               {/* Share dropdown */}
@@ -468,25 +534,33 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts, forks }: Props) {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-muted-foreground">
-                    <span className="font-medium text-foreground">{tasteTsts.length}</span> taste
-                    tests -{" "}
-                    <span className="text-yellow-brand font-medium">
-                      {tasteTsts.filter((t) => t.type === "SUGGESTION" && t.status === "OPEN").length}{" "}
-                      open suggestions
-                    </span>
+                    <span className="font-medium text-foreground">{tasteTestCount}</span> taste
+                    tests {tasteTsts.filter((t) => t.type === "SUGGESTION" && t.status === "OPEN").length > 0 && (
+                      <>— <span className="text-yellow-brand font-medium">
+                        {tasteTsts.filter((t) => t.type === "SUGGESTION" && t.status === "OPEN").length} open suggestions
+                      </span></>
+                    )}
                   </p>
-                  <button className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-yellow-brand hover:bg-yellow-hover text-[oklch(0.12_0_0)] text-xs font-medium transition-colors">
-                    <Plus className="w-3 h-3" />
-                    Add taste test
-                  </button>
                 </div>
 
+                {/* Comment form */}
+                <AddCommentForm
+                  recipeId={recipe.id}
+                  currentUser={currentUser}
+                  onAdded={handleAddTasteTest}
+                />
+
                 <div className="space-y-3">
+                  {tasteTsts.length === 0 && (
+                    <div className="text-center py-12 text-muted-foreground text-sm">
+                      No taste tests yet. Be the first to leave a comment!
+                    </div>
+                  )}
                   {tasteTsts.map((tt) =>
                     tt.type === "SUGGESTION" ? (
-                      <SuggestionCard key={tt.id} tt={tt} />
+                      <SuggestionCard key={tt.id} tt={tt} currentUser={currentUser} />
                     ) : (
-                      <CommentCard key={tt.id} tt={tt} />
+                      <CommentCard key={tt.id} tt={tt} currentUser={currentUser} />
                     ),
                   )}
                 </div>
@@ -670,7 +744,203 @@ function TweakRow({ tweak }: { tweak: TweakData }) {
   );
 }
 
-function SuggestionCard({ tt }: { tt: TasteTestData }) {
+// ── Add comment form ────────────────────────────────────────────────────────
+
+function AddCommentForm({
+  recipeId,
+  currentUser,
+  onAdded,
+}: {
+  recipeId: string;
+  currentUser?: { id: string; username: string; displayName: string; avatarUrl?: string | null } | null;
+  onAdded: (tt: TasteTestData) => void;
+}) {
+  const router = useRouter();
+  const [body, setBody] = useState("");
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+
+  if (!currentUser) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-4 text-center text-sm text-muted-foreground">
+        <Link href="/login" className="text-yellow-brand hover:underline font-medium">Sign in</Link> to leave a taste test.
+      </div>
+    );
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!body.trim()) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/taste-tests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipeId, type: "COMMENT", body: body.trim(), rating: rating || null }),
+      });
+      if (res.ok) {
+        const tt = await res.json();
+        onAdded({ ...tt, createdAt: tt.createdAt, replies: [] });
+        setBody("");
+        setRating(0);
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="rounded-xl border border-border bg-card p-4">
+      <div className="flex gap-3">
+        <Avatar className="h-8 w-8 shrink-0">
+          <AvatarImage src={currentUser.avatarUrl ?? undefined} />
+          <AvatarFallback className="text-xs bg-yellow-light">{currentUser.displayName[0]}</AvatarFallback>
+        </Avatar>
+        <div className="flex-1">
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Leave a taste test — what worked, what you'd tweak, substitutions tried..."
+            rows={3}
+            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-yellow-brand/40 focus:border-yellow-brand/60 transition-colors"
+          />
+          <div className="flex items-center justify-between mt-2">
+            {/* Star rating */}
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground mr-1">Rating:</span>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setRating(rating === i ? 0 : i)}
+                  onMouseEnter={() => setHoverRating(i)}
+                  onMouseLeave={() => setHoverRating(0)}
+                >
+                  <Star
+                    className={`w-4 h-4 transition-colors ${
+                      i <= (hoverRating || rating)
+                        ? "text-yellow-brand fill-yellow-brand/60"
+                        : "text-muted-foreground/30"
+                    }`}
+                  />
+                </button>
+              ))}
+              {rating > 0 && (
+                <button type="button" onClick={() => setRating(0)} className="text-[11px] text-muted-foreground hover:text-foreground ml-1">clear</button>
+              )}
+            </div>
+            <button
+              type="submit"
+              disabled={submitting || !body.trim()}
+              className="inline-flex items-center gap-1.5 h-8 px-4 rounded-lg bg-yellow-brand hover:bg-yellow-hover disabled:opacity-50 text-[oklch(0.12_0_0)] text-xs font-medium transition-colors"
+            >
+              {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              Post
+            </button>
+          </div>
+        </div>
+      </div>
+    </form>
+  );
+}
+
+// ── Reply thread ─────────────────────────────────────────────────────────────
+
+function ReplyThread({
+  tasteTestId,
+  initialReplies,
+  currentUser,
+}: {
+  tasteTestId: string;
+  initialReplies: TasteTestReplyData[];
+  currentUser?: { id: string; username: string; displayName: string; avatarUrl?: string | null } | null;
+}) {
+  const [replies, setReplies] = useState<TasteTestReplyData[]>(initialReplies);
+  const [open, setOpen] = useState(false);
+  const [replyBody, setReplyBody] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!replyBody.trim() || !currentUser) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/taste-tests/${tasteTestId}/replies`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body: replyBody.trim() }),
+      });
+      if (res.ok) {
+        const reply = await res.json();
+        setReplies((prev) => [...prev, reply]);
+        setReplyBody("");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="border-t border-border">
+      {/* Toggle replies */}
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 px-4 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full text-left"
+      >
+        <MessageSquare className="w-3.5 h-3.5" />
+        {replies.length > 0 ? `${replies.length} repl${replies.length === 1 ? "y" : "ies"}` : "Reply"}
+        {open ? <ChevronUp className="w-3 h-3 ml-auto" /> : <ChevronDown className="w-3 h-3 ml-auto" />}
+      </button>
+
+      {open && (
+        <div className="px-4 pb-4 space-y-3">
+          {replies.map((r) => (
+            <div key={r.id} className="flex gap-2.5">
+              <Avatar className="h-6 w-6 shrink-0">
+                <AvatarImage src={r.author.avatarUrl ?? undefined} />
+                <AvatarFallback className="text-[9px] bg-yellow-light">{r.author.displayName[0]}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 bg-muted/40 rounded-lg px-3 py-2">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-medium text-foreground">{r.author.displayName}</span>
+                  <span className="text-[11px] text-muted-foreground">{fmtDate(r.createdAt)}</span>
+                </div>
+                <p className="text-sm text-foreground/90 leading-relaxed">{r.body}</p>
+              </div>
+            </div>
+          ))}
+
+          {currentUser && (
+            <form onSubmit={handleReply} className="flex gap-2.5">
+              <Avatar className="h-6 w-6 shrink-0">
+                <AvatarImage src={currentUser.avatarUrl ?? undefined} />
+                <AvatarFallback className="text-[9px] bg-yellow-light">{currentUser.displayName[0]}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 flex gap-2">
+                <input
+                  value={replyBody}
+                  onChange={(e) => setReplyBody(e.target.value)}
+                  placeholder="Write a reply..."
+                  className="flex-1 bg-background border border-border rounded-lg px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-yellow-brand/40 focus:border-yellow-brand/60 transition-colors"
+                />
+                <button
+                  type="submit"
+                  disabled={submitting || !replyBody.trim()}
+                  className="inline-flex items-center gap-1 h-8 px-3 rounded-lg bg-yellow-brand hover:bg-yellow-hover disabled:opacity-50 text-[oklch(0.12_0_0)] text-xs font-medium transition-colors shrink-0"
+                >
+                  {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SuggestionCard({ tt, currentUser }: { tt: TasteTestData; currentUser?: { id: string; username: string; displayName: string; avatarUrl?: string | null } | null }) {
   const statusColor =
     tt.status === "OPEN"
       ? "text-green-500 bg-green-500/10 border-green-500/20"
@@ -734,41 +1004,55 @@ function SuggestionCard({ tt }: { tt: TasteTestData }) {
           ))}
         </div>
       )}
+
+      <ReplyThread
+        tasteTestId={tt.id}
+        initialReplies={tt.replies ?? []}
+        currentUser={currentUser}
+      />
     </div>
   );
 }
 
-function CommentCard({ tt }: { tt: TasteTestData }) {
+function CommentCard({ tt, currentUser }: { tt: TasteTestData; currentUser?: { id: string; username: string; displayName: string; avatarUrl?: string | null } | null }) {
   const dateStr = fmtDate(tt.createdAt);
   return (
-    <div className="flex gap-3 p-4 rounded-xl border border-border bg-card">
-      <Avatar className="h-8 w-8 shrink-0 mt-0.5">
-        <AvatarImage src={tt.author.avatarUrl ?? undefined} />
-        <AvatarFallback className="text-xs bg-yellow-light">
-          {tt.author.displayName[0]}
-        </AvatarFallback>
-      </Avatar>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-sm font-medium text-foreground">{tt.author.displayName}</span>
-          <span className="text-xs text-muted-foreground">· {dateStr}</span>
-          {tt.rating && (
-            <span className="ml-auto flex items-center gap-0.5">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star
-                  key={i}
-                  className={`w-3 h-3 ${
-                    i < tt.rating!
-                      ? "text-yellow-brand fill-yellow-brand/60"
-                      : "text-muted-foreground/30"
-                  }`}
-                />
-              ))}
-            </span>
-          )}
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <div className="flex gap-3 p-4">
+        <Avatar className="h-8 w-8 shrink-0 mt-0.5">
+          <AvatarImage src={tt.author.avatarUrl ?? undefined} />
+          <AvatarFallback className="text-xs bg-yellow-light">
+            {tt.author.displayName[0]}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-sm font-medium text-foreground">{tt.author.displayName}</span>
+            <span className="text-xs text-muted-foreground">· {dateStr}</span>
+            {tt.rating && (
+              <span className="ml-auto flex items-center gap-0.5">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star
+                    key={i}
+                    className={`w-3 h-3 ${
+                      i < tt.rating!
+                        ? "text-yellow-brand fill-yellow-brand/60"
+                        : "text-muted-foreground/30"
+                    }`}
+                  />
+                ))}
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-foreground/90 leading-relaxed">{tt.body}</p>
         </div>
-        <p className="text-sm text-foreground/90 leading-relaxed">{tt.body}</p>
       </div>
+
+      <ReplyThread
+        tasteTestId={tt.id}
+        initialReplies={tt.replies ?? []}
+        currentUser={currentUser}
+      />
     </div>
   );
 }

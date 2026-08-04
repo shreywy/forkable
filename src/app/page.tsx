@@ -1,6 +1,8 @@
 import { RecipeCard } from "@/components/RecipeCard";
+import { PantryCarousel } from "@/components/PantryCarousel";
+import { DiscoverFeed } from "@/components/DiscoverFeed";
 import { prisma } from "@/lib/prisma";
-import { TrendingUp, Compass, Flame, Leaf, Cake, Coffee, Globe, Soup, Beef, Fish } from "lucide-react";
+import { TrendingUp, Globe, Flame, Leaf, Cake, Coffee, Soup, Beef, Fish } from "lucide-react";
 import type { RecipeCardData } from "@/lib/types";
 
 export const revalidate = 300; // 5-minute ISR
@@ -16,11 +18,36 @@ const GENRES = [
   { label: "World",      icon: <Globe className="w-5 h-5" />,       slug: "world" },
 ];
 
+const TRENDING_TAKE = 3;
+const DISCOVER_TAKE = 9; // first page of infinite feed
+
+function mapRecipe(r: {
+  id: string; slug: string; name: string; description: string; imageUrl: string | null;
+  starCount: number; forkCount: number; tasteTestCount: number; tweakCount: number;
+  updatedAt: Date;
+  author: { username: string; displayName: string; avatarUrl: string | null };
+  forkedFrom: { slug: string; author: { username: string } } | null;
+  tags: { tag: { name: string; label: string } }[];
+}): RecipeCardData {
+  return {
+    id: r.id, slug: r.slug, name: r.name, description: r.description, imageUrl: r.imageUrl,
+    author: r.author,
+    forkedFrom: r.forkedFrom
+      ? { ownerUsername: r.forkedFrom.author.username, recipeSlug: r.forkedFrom.slug }
+      : null,
+    starCount: r.starCount, forkCount: r.forkCount,
+    tasteTestCount: r.tasteTestCount, tweakCount: r.tweakCount,
+    tags: r.tags.map((rt) => ({ name: rt.tag.name, label: rt.tag.label })),
+    updatedAt: r.updatedAt,
+  };
+}
+
 export default async function HomePage() {
+  // Fetch trending (first 3) + first discover page (next 9) in one query
   const rows = await prisma.recipe.findMany({
     where: { isPublic: true },
-    orderBy: { starCount: "desc" },
-    take: 12,
+    orderBy: [{ starCount: "desc" }, { id: "asc" }],
+    take: TRENDING_TAKE + DISCOVER_TAKE,
     include: {
       author: { select: { username: true, displayName: true, avatarUrl: true } },
       tags: { include: { tag: true }, take: 3 },
@@ -28,30 +55,8 @@ export default async function HomePage() {
     },
   });
 
-  const recipes: RecipeCardData[] = rows.map((r) => ({
-    id: r.id,
-    slug: r.slug,
-    name: r.name,
-    description: r.description,
-    imageUrl: r.imageUrl,
-    author: {
-      username: r.author.username,
-      displayName: r.author.displayName,
-      avatarUrl: r.author.avatarUrl,
-    },
-    forkedFrom: r.forkedFrom
-      ? { ownerUsername: r.forkedFrom.author.username, recipeSlug: r.forkedFrom.slug }
-      : null,
-    starCount: r.starCount,
-    forkCount: r.forkCount,
-    tasteTestCount: r.tasteTestCount,
-    tweakCount: r.tweakCount,
-    tags: r.tags.map((rt) => ({ name: rt.tag.name, label: rt.tag.label })),
-    updatedAt: r.updatedAt,
-  }));
-
-  const trending = recipes.slice(0, 3);
-  const discover = recipes.slice(3);
+  const trending = rows.slice(0, TRENDING_TAKE).map(mapRecipe);
+  const discover = rows.slice(TRENDING_TAKE).map(mapRecipe);
 
   return (
     <div className="min-h-screen bg-background">
@@ -85,6 +90,9 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* ── Pantry carousel (only visible when logged in + has pantry) ─────── */}
+      <PantryCarousel />
+
       <div className="max-w-[1280px] mx-auto px-4 py-10 space-y-14">
         {/* ── Genre categories ──────────────────────────────────────────────── */}
         <section>
@@ -117,15 +125,11 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* ── Discover ──────────────────────────────────────────────────────── */}
-        <section>
-          <SectionHeading icon={<Compass className="w-4 h-4 text-yellow-brand" />} title="Discover more" />
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {discover.map((recipe) => (
-              <RecipeCard key={recipe.id} recipe={recipe} />
-            ))}
-          </div>
-        </section>
+        {/* ── Discover (infinite scroll) ─────────────────────────────────── */}
+        <DiscoverFeed
+          initialRecipes={discover}
+          initialSkip={TRENDING_TAKE + DISCOVER_TAKE}
+        />
       </div>
     </div>
   );

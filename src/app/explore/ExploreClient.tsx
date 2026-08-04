@@ -8,7 +8,7 @@ import {
   Search, SlidersHorizontal, Flame, Leaf, Cake,
   Coffee, Globe, Soup, Beef, Fish, Library, Users,
   GitFork, Star, X, Package, FlaskConical,
-  ShoppingCart, CheckCircle2, AlertCircle, CircleDot,
+  ShoppingCart, CheckCircle2, AlertCircle, CircleDot, Bookmark, BookmarkCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -41,7 +41,9 @@ interface ExploreClientProps {
   recipes: ExploreRecipe[];
   cookbooks: ExploreCookbook[];
   featuredCooks: ExploreCook[];
-  allIngredients: { name: string }[];
+  allIngredients: { id: string; slug: string; name: string }[];
+  pantryIngredientIds: Set<string>;
+  isLoggedIn: boolean;
 }
 
 // ── Tag definitions ────────────────────────────────────────────────────────────
@@ -62,7 +64,7 @@ const DIET_OPTIONS = ["Vegan", "Vegetarian", "Gluten-free", "Dairy-free", "Nut-f
 
 type ExploreTab = "recipes" | "ingredients";
 
-export function ExploreClient({ recipes, cookbooks, featuredCooks, allIngredients }: ExploreClientProps) {
+export function ExploreClient({ recipes, cookbooks, featuredCooks, allIngredients, pantryIngredientIds: initialPantryIds, isLoggedIn }: ExploreClientProps) {
   const searchParams = useSearchParams();
   const [exploreTab, setExploreTab] = useState<ExploreTab>("recipes");
 
@@ -80,7 +82,59 @@ export function ExploreClient({ recipes, cookbooks, featuredCooks, allIngredient
   const [selectedDiets, setSelectedDiets] = useState<Set<string>>(new Set());
 
   const [ingredientQuery, setIngredientQuery] = useState("");
+
+  // Persist fridge selections to localStorage so they survive page reloads
   const [selectedIngredients, setSelectedIngredients] = useState<Set<string>>(new Set());
+
+  // Hydrate from localStorage after mount (avoids SSR mismatch)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("forkable-fridge");
+      if (saved) setSelectedIngredients(new Set(JSON.parse(saved) as string[]));
+    } catch { /* ignore parse errors */ }
+  }, []);
+
+  // Sync to localStorage whenever selections change
+  useEffect(() => {
+    try {
+      localStorage.setItem("forkable-fridge", JSON.stringify([...selectedIngredients]));
+    } catch { /* ignore quota errors */ }
+  }, [selectedIngredients]);
+
+  // ── Pantry state ───────────────────────────────────────────────────────────
+  const [pantryIds, setPantryIds] = useState<Set<string>>(initialPantryIds);
+
+  const handlePantryToggle = async (e: React.MouseEvent, ingredientId: string) => {
+    e.stopPropagation();
+    if (!isLoggedIn) { window.location.href = "/login"; return; }
+    const inPantry = pantryIds.has(ingredientId);
+    // Optimistic update
+    setPantryIds((prev) => {
+      const next = new Set(prev);
+      if (inPantry) next.delete(ingredientId);
+      else next.add(ingredientId);
+      return next;
+    });
+    try {
+      if (inPantry) {
+        await fetch(`/api/pantry/${ingredientId}`, { method: "DELETE" });
+      } else {
+        await fetch("/api/pantry", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ingredientId }),
+        });
+      }
+    } catch {
+      // Revert on error
+      setPantryIds((prev) => {
+        const next = new Set(prev);
+        if (inPantry) next.add(ingredientId);
+        else next.delete(ingredientId);
+        return next;
+      });
+    }
+  };
 
   // ── Tag click handlers ─────────────────────────────────────────────────────
   const handleTagClick = (slug: string) => {
@@ -620,45 +674,71 @@ export function ExploreClient({ recipes, cookbooks, featuredCooks, allIngredient
                   ) : (
                     filteredIngredients.map((ing) => {
                       const isSelected = selectedIngredients.has(ing.name.toLowerCase());
+                      const inPantry = pantryIds.has(ing.id);
                       const recipeCount = ingredientRecipeCounts[ing.name.toLowerCase()] ?? 0;
                       return (
-                        <button
+                        <div
                           key={ing.name}
-                          onClick={() =>
-                            setSelectedIngredients((prev) => {
-                              const next = new Set(prev);
-                              const key = ing.name.toLowerCase();
-                              if (next.has(key)) next.delete(key);
-                              else next.add(key);
-                              return next;
-                            })
-                          }
-                          className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left transition-colors ${
-                            isSelected
-                              ? "bg-yellow-subtle dark:bg-yellow-muted/40"
-                              : "hover:bg-muted/50"
+                          className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${
+                            isSelected ? "bg-yellow-subtle dark:bg-yellow-muted/40" : "hover:bg-muted/50"
                           }`}
                         >
-                          <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
-                            isSelected
-                              ? "bg-yellow-brand border-yellow-brand"
-                              : "border-border bg-background"
-                          }`}>
+                          {/* Fridge checkbox */}
+                          <button
+                            onClick={() =>
+                              setSelectedIngredients((prev) => {
+                                const next = new Set(prev);
+                                const key = ing.name.toLowerCase();
+                                if (next.has(key)) next.delete(key);
+                                else next.add(key);
+                                return next;
+                              })
+                            }
+                            className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                              isSelected ? "bg-yellow-brand border-yellow-brand" : "border-border bg-background"
+                            }`}
+                          >
                             {isSelected && (
                               <svg className="w-2.5 h-2.5 text-[oklch(0.12_0_0)]" viewBox="0 0 10 10" fill="none">
                                 <path d="M1.5 5L4 7.5L8.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                               </svg>
                             )}
-                          </span>
-                          <span className={`flex-1 text-sm ${isSelected ? "text-yellow-brand font-medium" : "text-foreground"}`}>
+                          </button>
+                          {/* Name */}
+                          <button
+                            onClick={() =>
+                              setSelectedIngredients((prev) => {
+                                const next = new Set(prev);
+                                const key = ing.name.toLowerCase();
+                                if (next.has(key)) next.delete(key);
+                                else next.add(key);
+                                return next;
+                              })
+                            }
+                            className={`flex-1 text-sm text-left ${isSelected ? "text-yellow-brand font-medium" : "text-foreground"}`}
+                          >
                             {ing.name}
-                          </span>
+                          </button>
+                          {/* Recipe count */}
                           {recipeCount > 0 && (
                             <span className={`text-[10px] tabular-nums shrink-0 ${isSelected ? "text-yellow-brand/70" : "text-muted-foreground/60"}`}>
                               {recipeCount}
                             </span>
                           )}
-                        </button>
+                          {/* Pantry save button */}
+                          <button
+                            onClick={(e) => handlePantryToggle(e, ing.id)}
+                            title={inPantry ? "Remove from pantry" : "Save to pantry"}
+                            className={`shrink-0 transition-colors ${
+                              inPantry ? "text-yellow-brand" : "text-muted-foreground/30 hover:text-muted-foreground"
+                            }`}
+                          >
+                            {inPantry
+                              ? <BookmarkCheck className="w-3.5 h-3.5" />
+                              : <Bookmark className="w-3.5 h-3.5" />
+                            }
+                          </button>
+                        </div>
                       );
                     })
                   )}

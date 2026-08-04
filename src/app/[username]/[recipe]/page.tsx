@@ -47,6 +47,12 @@ export default async function RecipePage({ params }: Props) {
           take: 20,
           include: {
             author: { select: { username: true, displayName: true, avatarUrl: true } },
+            replies: {
+              orderBy: { createdAt: "asc" },
+              include: {
+                author: { select: { username: true, displayName: true, avatarUrl: true } },
+              },
+            },
           },
         },
         // Recipe.forks = Recipe[] (children that forked from this recipe)
@@ -169,7 +175,7 @@ export default async function RecipePage({ params }: Props) {
     deletions: v.deletions,
   }));
 
-  // Taste tests
+  // Taste tests (with replies)
   const tasteTsts: TasteTestData[] = recipe.tasteTests.map((tt) => ({
     id: tt.id,
     type: tt.type,
@@ -180,6 +186,12 @@ export default async function RecipePage({ params }: Props) {
     rating: tt.rating,
     title: tt.title,
     diff: tt.diff as TasteTestData["diff"],
+    replies: tt.replies.map((r) => ({
+      id: r.id,
+      body: r.body,
+      author: r.author,
+      createdAt: r.createdAt.toISOString(),
+    })),
   }));
 
   // Forked recipes (Recipe.forks = child Recipe[])
@@ -201,8 +213,37 @@ export default async function RecipePage({ params }: Props) {
     updatedAt: f.updatedAt,
   }));
 
-  // Suppress unused session warning — will be used for auth-gated actions in Phase 3
-  void session;
+  // Build currentUser from session
+  const sessionUser = session?.user as { id?: string; name?: string; image?: string; username?: string; displayName?: string } | undefined;
+  const userId = sessionUser?.id ?? null;
+
+  // Check if current user already forked this recipe
+  let existingForkUrl: string | null = null;
+  if (userId) {
+    const existingFork = await prisma.fork.findUnique({
+      where: { userId_sourceId: { userId, sourceId: recipe.id } },
+      include: { recipe: { select: { slug: true, author: { select: { username: true } } } } },
+    });
+    if (existingFork) {
+      existingForkUrl = `/${existingFork.recipe.author.username}/${existingFork.recipe.slug}`;
+    }
+  }
+
+  // Fetch user's displayName from DB (not in JWT token)
+  let dbDisplayName = sessionUser?.name ?? "";
+  if (userId && !dbDisplayName) {
+    const dbUser = await prisma.user.findUnique({ where: { id: userId }, select: { displayName: true, avatarUrl: true } });
+    dbDisplayName = dbUser?.displayName ?? "";
+  }
+
+  const currentUser = userId && sessionUser
+    ? {
+        id: userId,
+        username: sessionUser.username ?? "",
+        displayName: dbDisplayName,
+        avatarUrl: sessionUser.image ?? null,
+      }
+    : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -211,6 +252,8 @@ export default async function RecipePage({ params }: Props) {
         tweaks={tweaks}
         tasteTsts={tasteTsts}
         forks={forks}
+        currentUser={currentUser}
+        existingForkUrl={existingForkUrl}
       />
     </div>
   );

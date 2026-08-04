@@ -1,8 +1,12 @@
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import { ExploreClient } from "./ExploreClient";
 
 export default async function ExplorePage() {
-  const [recipes, cookbooks, featuredCooks, allIngredients] = await Promise.all([
+  const session = await auth();
+  const userId = (session?.user as { id?: string } | undefined)?.id ?? null;
+
+  const [recipes, cookbooks, featuredCooks, allIngredients, pantryItems] = await Promise.all([
     prisma.recipe.findMany({
       where: { isPublic: true },
       orderBy: { starCount: "desc" },
@@ -46,9 +50,16 @@ export default async function ExplorePage() {
 
     prisma.ingredient.findMany({
       distinct: ["name"],
-      select: { name: true },
+      select: { id: true, slug: true, name: true },
       orderBy: { name: "asc" },
     }),
+
+    userId
+      ? prisma.pantryItem.findMany({
+          where: { userId },
+          select: { ingredientId: true },
+        })
+      : Promise.resolve([]),
   ]);
 
   return (
@@ -94,6 +105,8 @@ export default async function ExplorePage() {
         totalStars: u.recipes.reduce((s, r) => s + r.starCount, 0),
       }))}
       allIngredients={allIngredients}
+      pantryIngredientIds={new Set(pantryItems.map((p) => p.ingredientId))}
+      isLoggedIn={!!userId}
     />
   );
 }

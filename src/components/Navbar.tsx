@@ -224,9 +224,11 @@ export function Navbar() {
                 <p className="text-xs text-muted-foreground">@{user?.username}</p>
               </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => router.push(`/${user?.username}`)}>
-                Your profile
-              </DropdownMenuItem>
+              {user?.username && (
+                <DropdownMenuItem onClick={() => router.push(`/${user.username}`)}>
+                  Your profile
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={() => router.push("/settings")}>
                 Settings
               </DropdownMenuItem>

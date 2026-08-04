@@ -107,25 +107,39 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
 
   callbacks: {
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger }) {
       if (user) {
         token.id = user.id;
-        token.username = (user as { username?: string }).username;
       }
-      // On Google sign-in, fetch the username we stored in DB
-      if (account?.provider === "google" && token.sub) {
-        const dbUser = await prisma.user.findUnique({
-          where: { id: token.sub },
-          select: { username: true },
-        });
-        token.username = dbUser?.username;
+      // Refresh profile data from DB:
+      //  - on any OAuth sign-in (account present)
+      //  - when session.update() is called (trigger === "update"), e.g. after onboarding
+      const shouldRefresh = !!account || trigger === "update";
+      if (shouldRefresh) {
+        const id = (token.id ?? token.sub) as string | undefined;
+        if (id) {
+          const dbUser = await prisma.user.findUnique({
+            where: { id },
+            select: { username: true, displayName: true, avatarUrl: true },
+          });
+          if (dbUser) {
+            token.username    = dbUser.username;
+            token.displayName = dbUser.displayName;
+            token.picture     = dbUser.avatarUrl ?? token.picture;
+          }
+        }
       }
       return token;
     },
 
     async session({ session, token }) {
       session.user.id = token.id as string;
-      (session.user as { username?: string }).username = token.username as string;
+      // Only set username/displayName if they're non-empty strings (guards against undefined)
+      const username = token.username as string | undefined;
+      const displayName = token.displayName as string | undefined;
+      if (username) (session.user as unknown as { username: string }).username = username;
+      if (displayName) (session.user as unknown as { displayName: string }).displayName = displayName;
+      if (token.picture) session.user.image = token.picture as string;
       return session;
     },
   },

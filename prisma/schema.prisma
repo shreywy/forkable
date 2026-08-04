@@ -89,16 +89,18 @@ model User {
   sessions Session[]
 
   // Forkable relations
-  recipes   Recipe[]
-  stars     Star[]
-  forks     Fork[]
-  cookbooks Cookbook[]
-  tasteTests TasteTest[]
+  recipes        Recipe[]
+  stars          Star[]
+  forks          Fork[]
+  cookbooks      Cookbook[]
+  tasteTests     TasteTest[]
+  tasteTestReplies TasteTestReply[]
+  pantryItems    PantryItem[]
   notifications  Notification[] @relation("NotifRecipient")
   notifTriggered Notification[] @relation("NotifActor")
-  followers Follow[] @relation("FollowedUser")
-  following Follow[] @relation("FollowingUser")
-  tweaks    RecipeVersion[]
+  followers      Follow[] @relation("FollowedUser")
+  following      Follow[] @relation("FollowingUser")
+  tweaks         RecipeVersion[]
 
   @@index([username])
   @@index([email])
@@ -242,7 +244,8 @@ model Ingredient {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  usages ComponentIngredient[]
+  usages      ComponentIngredient[]
+  pantryItems PantryItem[]
 
   @@index([name])
   @@index([slug])
@@ -366,8 +369,9 @@ model TasteTest {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  author User   @relation(fields: [authorId], references: [id])
+  recipe  Recipe          @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  author  User            @relation(fields: [authorId], references: [id])
+  replies TasteTestReply[]
 
   @@index([recipeId, createdAt])
   @@index([authorId])
@@ -382,6 +386,36 @@ enum TasteTestStatus {
   OPEN
   MERGED
   CLOSED
+}
+
+model TasteTestReply {
+  id          String    @id @default(cuid())
+  tasteTestId String
+  authorId    String
+  body        String    @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tasteTest TasteTest @relation(fields: [tasteTestId], references: [id], onDelete: Cascade)
+  author    User      @relation(fields: [authorId],    references: [id])
+
+  @@index([tasteTestId, createdAt])
+  @@index([authorId])
+}
+
+// ─── Pantry ──────────────────────────────────────────────────────────────────
+
+model PantryItem {
+  userId       String
+  ingredientId String
+  addedAt      DateTime @default(now())
+
+  user       User       @relation(fields: [userId],       references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@id([userId, ingredientId])
+  @@index([userId])
+  @@index([ingredientId])
 }
 
 // ─── Tags ─────────────────────────────────────────────────────────────────────

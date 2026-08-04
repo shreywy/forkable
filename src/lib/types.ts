@@ -53,6 +53,14 @@ export type TweakData = {
   deletions: number;
 };
 
+/** Reply on a taste test */
+export type TasteTestReplyData = {
+  id: string;
+  body: string;
+  author: RecipeAuthor;
+  createdAt: Date | string;
+};
+
 /** Taste test shape for RecipePageTabs */
 export type TasteTestData = {
   id: string;
@@ -66,6 +74,7 @@ export type TasteTestData = {
   // suggestion
   title?: string | null;
   diff?: { ingredient: string; from: string; to: string }[] | null;
+  replies?: TasteTestReplyData[];
 };
 
 /** File-tree node shape */
