@@ -73,7 +73,7 @@ function getFileContent(filename: string, recipe: RecipePageData, folder?: strin
 
   if (filename === "assembly.md" || filename === "README.md") {
     const tagStr = recipe.tags.map((t) => t.label).join(", ");
-    const updatedStr = typeof recipe.updatedAt === "string" ? recipe.updatedAt : recipe.updatedAt.toLocaleDateString();
+    const updatedStr = new Date(recipe.updatedAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
     return `# ${recipe.name}\n\n${recipe.description}\n\n**Tags:** ${tagStr}\n\n**Last updated:** ${updatedStr}`;
   }
 

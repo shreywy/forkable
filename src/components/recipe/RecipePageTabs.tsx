@@ -1,6 +1,11 @@
 "use client";
 
 import { useState } from "react";
+
+function fmtDate(d: Date | string): string {
+  const date = typeof d === "string" ? new Date(d) : d;
+  return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+}
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -237,6 +242,7 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts, forks }: Props) {
                         src={recipe.imageUrl}
                         alt={recipe.name}
                         fill
+                        priority
                         className="object-cover"
                         sizes="800px"
                       />
@@ -372,7 +378,7 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts, forks }: Props) {
                             </span>
                             <span className="text-xs text-muted-foreground">·</span>
                             <span className="text-xs text-muted-foreground">
-                              updated {typeof fork.updatedAt === "string" ? fork.updatedAt : fork.updatedAt.toLocaleDateString()}
+                              updated {fmtDate(fork.updatedAt)}
                             </span>
                           </div>
                           <p className="text-sm font-semibold text-foreground group-hover:text-yellow-brand transition-colors">
@@ -543,7 +549,7 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts, forks }: Props) {
                           {tweak.message}
                         </p>
                         <p className="text-[11px] text-muted-foreground mt-0.5">
-                          {typeof tweak.createdAt === "string" ? tweak.createdAt : tweak.createdAt.toLocaleDateString()}
+                          {fmtDate(tweak.createdAt)}
                         </p>
                       </div>
                     </div>
@@ -615,7 +621,7 @@ function SectionFile({
 
 function TweakRow({ tweak }: { tweak: TweakData }) {
   const [expanded, setExpanded] = useState(false);
-  const dateStr = typeof tweak.createdAt === "string" ? tweak.createdAt : tweak.createdAt.toLocaleDateString();
+  const dateStr = fmtDate(tweak.createdAt);
   return (
     <div className="px-4 py-3 hover:bg-muted/30 transition-colors">
       <div className="flex items-center gap-3">
@@ -673,7 +679,7 @@ function SuggestionCard({ tt }: { tt: TasteTestData }) {
         : "text-muted-foreground bg-muted border-border";
   const StatusIcon =
     tt.status === "MERGED" ? GitMerge : tt.status === "OPEN" ? GitFork : X;
-  const dateStr = typeof tt.createdAt === "string" ? tt.createdAt : tt.createdAt.toLocaleDateString();
+  const dateStr = fmtDate(tt.createdAt);
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -733,7 +739,7 @@ function SuggestionCard({ tt }: { tt: TasteTestData }) {
 }
 
 function CommentCard({ tt }: { tt: TasteTestData }) {
-  const dateStr = typeof tt.createdAt === "string" ? tt.createdAt : tt.createdAt.toLocaleDateString();
+  const dateStr = fmtDate(tt.createdAt);
   return (
     <div className="flex gap-3 p-4 rounded-xl border border-border bg-card">
       <Avatar className="h-8 w-8 shrink-0 mt-0.5">

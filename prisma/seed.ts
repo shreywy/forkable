@@ -297,7 +297,7 @@ const RECIPES: RecipeDef[] = [
     slug: "sourdough-country-loaf",
     name: "Sourdough Country Loaf",
     description: "A 75% hydration open-crumb country loaf. My starter is named Gerald. He is 4 years old.",
-    imageUrl: "https://images.unsplash.com/photo-1585478259715-876acc5be8eb?w=800&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=800&q=80",
     authorKey: "sarah_bakes",
     tags: ["baking", "bread", "vegan"],
     servings: 12,

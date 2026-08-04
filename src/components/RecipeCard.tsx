@@ -7,9 +7,10 @@ import type { RecipeCardData } from "@/lib/types";
 
 interface RecipeCardProps {
   recipe: RecipeCardData;
+  priority?: boolean;
 }
 
-export function RecipeCard({ recipe }: RecipeCardProps) {
+export function RecipeCard({ recipe, priority }: RecipeCardProps) {
   const href = `/${recipe.author.username}/${recipe.slug}`;
 
   return (
@@ -21,6 +22,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
             src={recipe.imageUrl}
             alt={recipe.name}
             fill
+            priority={priority}
             className="object-cover group-hover:scale-[1.02] transition-transform duration-300"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           />

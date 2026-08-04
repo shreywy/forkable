@@ -111,8 +111,8 @@ export default async function HomePage() {
         <section>
           <SectionHeading icon={<TrendingUp className="w-4 h-4 text-yellow-brand" />} title="Trending this week" />
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {trending.map((recipe) => (
-              <RecipeCard key={recipe.id} recipe={recipe} />
+            {trending.map((recipe, i) => (
+              <RecipeCard key={recipe.id} recipe={recipe} priority={i === 0} />
             ))}
           </div>
         </section>

@@ -216,10 +216,8 @@ export default function NotificationsPage() {
 
                 {/* Actor avatar */}
                 <Avatar className="h-8 w-8 shrink-0">
+                  <AvatarImage src={notif.actor.avatarUrl} alt={notif.actor.displayName} />
                   <AvatarFallback className="text-[10px] bg-yellow-light">
-                    {notif.actor.displayName[0]}
-                  </AvatarFallback>
-                  <AvatarFallback>
                     {notif.actor.displayName[0]}
                   </AvatarFallback>
                 </Avatar>

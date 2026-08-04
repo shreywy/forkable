@@ -124,10 +124,12 @@ export default async function RecipePage({ params }: Props) {
     .filter((c) => c.parentId === null)
     .map(mapComponent);
 
-  // Flatten top-level FILE steps for the instructions panel
+  // Flatten ALL top-level component steps for the instructions panel.
+  // Most recipes use FOLDER-type components (not FILE), so we include all types.
   const instructions: { step: number; text: string }[] = recipe.components
-    .filter((c) => c.parentId === null && c.type === "FILE")
-    .flatMap((c) => c.steps)
+    .filter((c) => c.parentId === null)
+    .sort((a, b) => a.order - b.order)
+    .flatMap((c) => c.steps.sort((a, b) => a.order - b.order))
     .map((s, i) => ({ step: i + 1, text: s.content }));
 
   // Build RecipePageData
@@ -162,7 +164,7 @@ export default async function RecipePage({ params }: Props) {
     id: v.id,
     message: v.message,
     author: v.author,
-    createdAt: v.createdAt,
+    createdAt: v.createdAt.toISOString(),
     additions: v.additions,
     deletions: v.deletions,
   }));
@@ -173,7 +175,7 @@ export default async function RecipePage({ params }: Props) {
     type: tt.type,
     status: tt.status,
     author: tt.author,
-    createdAt: tt.createdAt,
+    createdAt: tt.createdAt.toISOString(),
     body: tt.body,
     rating: tt.rating,
     title: tt.title,
