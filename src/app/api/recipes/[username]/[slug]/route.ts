@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 
 export async function GET(
   _req: Request,
@@ -78,4 +79,113 @@ export async function GET(
     components,
     instructions,
   });
+}
+
+// ── PUT — save edits + create a tweak (commit) ───────────────────────────────
+
+type EditIngredient = { name: string; amount: string; unit: string };
+type EditStep = { content: string };
+type EditComponent = { id: string; ingredients: EditIngredient[]; steps: EditStep[] };
+
+function toSlug(str: string) {
+  return str.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "ingredient";
+}
+
+export async function PUT(
+  req: Request,
+  { params }: { params: Promise<{ username: string; slug: string }> },
+) {
+  const session = await auth();
+  const userId = (session?.user as { id?: string } | null)?.id;
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { username, slug } = await params;
+
+  const recipe = await prisma.recipe.findFirst({
+    where: { slug, author: { username } },
+    select: { id: true, authorId: true, name: true },
+  });
+  if (!recipe) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (recipe.authorId !== userId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const body = await req.json() as {
+    name: string;
+    description: string;
+    tags: string[];
+    components: EditComponent[];
+    tweakMessage: string;
+  };
+
+  await prisma.$transaction(async (tx) => {
+    // 1. Update recipe metadata
+    await tx.recipe.update({
+      where: { id: recipe.id },
+      data: {
+        name: body.name.trim(),
+        description: body.description.trim(),
+        tweakCount: { increment: 1 },
+      },
+    });
+
+    // 2. Replace tags
+    await tx.recipeTag.deleteMany({ where: { recipeId: recipe.id } });
+    for (const tagSlug of body.tags) {
+      const label = tagSlug.charAt(0).toUpperCase() + tagSlug.slice(1);
+      const tag = await tx.tag.upsert({
+        where: { name: tagSlug },
+        create: { name: tagSlug, label },
+        update: {},
+      });
+      await tx.recipeTag.create({ data: { recipeId: recipe.id, tagId: tag.id } });
+    }
+
+    // 3. Update each component's ingredients + steps
+    for (const comp of body.components) {
+      // Delete and recreate ComponentIngredients
+      await tx.componentIngredient.deleteMany({ where: { componentId: comp.id } });
+      for (let i = 0; i < comp.ingredients.length; i++) {
+        const ing = comp.ingredients[i];
+        const name = ing.name.trim();
+        if (!name) continue;
+        const slug = toSlug(name);
+        const ingredient = await tx.ingredient.upsert({
+          where: { slug },
+          create: { slug, name },
+          update: {},
+        });
+        await tx.componentIngredient.create({
+          data: {
+            componentId: comp.id,
+            ingredientId: ingredient.id,
+            amount: ing.amount ? parseFloat(ing.amount) : null,
+            unit: ing.unit || null,
+            order: i,
+          },
+        });
+      }
+
+      // Delete and recreate Steps
+      await tx.step.deleteMany({ where: { componentId: comp.id } });
+      for (let i = 0; i < comp.steps.length; i++) {
+        const text = comp.steps[i].content.trim();
+        if (!text) continue;
+        await tx.step.create({
+          data: { componentId: comp.id, content: text, order: i },
+        });
+      }
+    }
+
+    // 4. Create RecipeVersion (tweak commit)
+    await tx.recipeVersion.create({
+      data: {
+        recipeId: recipe.id,
+        authorId: userId,
+        message: body.tweakMessage.trim(),
+        additions: body.components.reduce((s, c) => s + c.ingredients.length + c.steps.length, 0),
+        deletions: 0,
+      },
+    });
+  });
+
+  return NextResponse.json({ success: true });
 }

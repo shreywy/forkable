@@ -447,9 +447,13 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts: initialTasteTsts, fo
                     <span className="font-medium text-foreground">{recipe.forkCount}</span> forks of this
                     recipe
                   </p>
-                  <button className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-yellow-brand hover:bg-yellow-hover text-[oklch(0.12_0_0)] text-xs font-medium transition-colors">
-                    <GitFork className="w-3 h-3" />
-                    Fork this recipe
+                  <button
+                    onClick={handleFork}
+                    disabled={forking}
+                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-yellow-brand hover:bg-yellow-hover text-[oklch(0.12_0_0)] text-xs font-medium transition-colors disabled:opacity-60"
+                  >
+                    {forking ? <Loader2 className="w-3 h-3 animate-spin" /> : <GitFork className="w-3 h-3" />}
+                    {myForkUrl ? "View your fork" : "Fork this recipe"}
                   </button>
                 </div>
 
