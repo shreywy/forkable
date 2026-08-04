@@ -217,16 +217,24 @@ export default async function RecipePage({ params }: Props) {
   const sessionUser = session?.user as { id?: string; name?: string; image?: string; username?: string; displayName?: string } | undefined;
   const userId = sessionUser?.id ?? null;
 
-  // Check if current user already forked this recipe
+  // Check if current user already forked or starred this recipe
   let existingForkUrl: string | null = null;
+  let isStarred = false;
   if (userId) {
-    const existingFork = await prisma.fork.findUnique({
-      where: { userId_sourceId: { userId, sourceId: recipe.id } },
-      include: { recipe: { select: { slug: true, author: { select: { username: true } } } } },
-    });
+    const [existingFork, existingStar] = await Promise.all([
+      prisma.fork.findUnique({
+        where: { userId_sourceId: { userId, sourceId: recipe.id } },
+        include: { recipe: { select: { slug: true, author: { select: { username: true } } } } },
+      }),
+      prisma.star.findUnique({
+        where: { userId_recipeId: { userId, recipeId: recipe.id } },
+        select: { userId: true },
+      }),
+    ]);
     if (existingFork) {
       existingForkUrl = `/${existingFork.recipe.author.username}/${existingFork.recipe.slug}`;
     }
+    isStarred = !!existingStar;
   }
 
   // Fetch user's displayName from DB (not in JWT token)
@@ -254,6 +262,7 @@ export default async function RecipePage({ params }: Props) {
         forks={forks}
         currentUser={currentUser}
         existingForkUrl={existingForkUrl}
+        initialIsStarred={isStarred}
       />
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 
 function fmtDate(d: Date | string): string {
   const date = typeof d === "string" ? new Date(d) : d;
@@ -44,9 +44,10 @@ interface Props {
   currentUser?: CurrentUser | null;
   /** If the current user already forked this recipe, the URL of their fork */
   existingForkUrl?: string | null;
+  initialIsStarred?: boolean;
 }
 
-export function RecipePageTabs({ recipe, tweaks, tasteTsts: initialTasteTsts, forks, currentUser, existingForkUrl }: Props) {
+export function RecipePageTabs({ recipe, tweaks, tasteTsts: initialTasteTsts, forks, currentUser, existingForkUrl, initialIsStarred = false }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("recipe");
   const [copied, setCopied] = useState(false);
   const [forking, setForking] = useState(false);
@@ -54,6 +55,9 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts: initialTasteTsts, fo
   const [myForkUrl, setMyForkUrl] = useState<string | null>(existingForkUrl ?? null);
   const [tasteTsts, setTasteTsts] = useState<TasteTestData[]>(initialTasteTsts);
   const [tasteTestCount, setTasteTestCount] = useState(recipe.tasteTestCount);
+  const [isStarred, setIsStarred] = useState(initialIsStarred);
+  const [starCount, setStarCount] = useState(recipe.starCount);
+  const [starring, setStarring] = useState(false);
   const router = useRouter();
   const owner = recipe.author;
   const isOwnRecipe = currentUser?.id !== undefined && recipe.author.username === currentUser?.username;
@@ -89,6 +93,28 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts: initialTasteTsts, fo
       }
     } finally {
       setForking(false);
+    }
+  };
+
+  const handleStar = async () => {
+    if (!currentUser) { router.push("/login"); return; }
+    if (starring) return;
+    setStarring(true);
+    const newStarred = !isStarred;
+    setIsStarred(newStarred);
+    setStarCount((c) => c + (newStarred ? 1 : -1));
+    try {
+      await fetch("/api/star", {
+        method: newStarred ? "POST" : "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipeId: recipe.id }),
+      });
+    } catch {
+      // revert on failure
+      setIsStarred(!newStarred);
+      setStarCount((c) => c + (newStarred ? -1 : 1));
+    } finally {
+      setStarring(false);
     }
   };
 
@@ -157,12 +183,26 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts: initialTasteTsts, fo
           {/* Action bar */}
           <div className="flex flex-wrap items-center gap-2 mb-4">
             <ActionButton icon={<Eye className="w-3.5 h-3.5" />} label="Watch" count={42} />
-            <ActionButton
-              icon={<Star className="w-3.5 h-3.5" />}
-              label="Star"
-              count={recipe.starCount}
-              highlight
-            />
+            {/* Star button — live wired */}
+            <button
+              onClick={handleStar}
+              disabled={starring}
+              className={`inline-flex items-center h-8 rounded-md border text-xs font-medium transition-colors overflow-hidden ${
+                isStarred
+                  ? "border-yellow-brand bg-yellow-subtle dark:bg-yellow-muted"
+                  : "border-yellow-brand/40 hover:border-yellow-brand"
+              }`}
+            >
+              <span className={`flex items-center gap-1.5 px-3 h-full border-r border-border transition-colors ${
+                isStarred ? "text-yellow-hover" : "bg-card hover:bg-yellow-subtle text-foreground"
+              }`}>
+                <Star className={`w-3.5 h-3.5 ${isStarred ? "fill-yellow-brand text-yellow-brand" : ""}`} />
+                {isStarred ? "Starred" : "Star"}
+              </span>
+              <span className="px-2.5 h-full flex items-center bg-yellow-subtle/50 hover:bg-yellow-subtle transition-colors text-muted-foreground">
+                {starCount.toLocaleString()}
+              </span>
+            </button>
             {/* Fork button — live wired */}
             {!isOwnRecipe && (
               <button
@@ -593,7 +633,7 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts: initialTasteTsts, fo
                 <StatRow
                   icon={<Star className="w-4 h-4" />}
                   label="Stars"
-                  value={recipe.starCount.toLocaleString()}
+                  value={starCount.toLocaleString()}
                 />
                 <StatRow
                   icon={<GitFork className="w-4 h-4" />}

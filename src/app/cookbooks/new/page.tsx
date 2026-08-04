@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Library, Plus, X, Lock, Globe, ChevronRight, CheckCircle2 } from "lucide-react";
-import { MOCK_RECIPES } from "@/lib/mock-data";
+import { useSession } from "next-auth/react";
+import { Library, Lock, Globe, ChevronRight, CheckCircle2, Loader2 } from "lucide-react";
 
 function toSlug(name: string) {
   return name
@@ -16,57 +16,41 @@ function toSlug(name: string) {
 
 export default function NewCookbookPage() {
   const router = useRouter();
+  const { data: session } = useSession();
+  const username = (session?.user as { username?: string } | null)?.username;
+
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isPublic, setIsPublic] = useState(true);
-  const [selectedRecipes, setSelectedRecipes] = useState<Set<string>>(new Set());
-  const [created, setCreated] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const slug = toSlug(name);
 
-  const toggleRecipe = (id: string) => {
-    setSelectedRecipes((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
+  const handleCreate = async () => {
+    if (!name.trim()) return;
+    if (!session?.user) { router.push("/login"); return; }
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/cookbooks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), description: description.trim() || undefined, isPublic }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        setError(d.error ?? "Failed to create cookbook");
+        return;
+      }
+      const { slug: newSlug, username: ownerUsername } = await res.json();
+      router.push(`/${ownerUsername}/cookbooks/${newSlug}`);
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
-
-  // Recipes by shrey
-  const shreyRecipes = MOCK_RECIPES.filter((r) => r.owner.username === "shrey");
-  const otherRecipes = MOCK_RECIPES.filter((r) => r.owner.username !== "shrey").slice(0, 6);
-
-  if (created) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="max-w-sm w-full mx-auto px-4 text-center space-y-5">
-          <div className="flex items-center justify-center w-16 h-16 rounded-full bg-yellow-subtle dark:bg-yellow-muted mx-auto">
-            <Library className="w-8 h-8 text-yellow-brand" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">{name || "Cookbook"} created!</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Your cookbook is ready. Add more recipes anytime.
-            </p>
-          </div>
-          <div className="flex flex-col gap-3">
-            <Link
-              href={`/shrey/cookbooks/${slug || "my-cookbook"}`}
-              className="h-10 rounded-lg bg-yellow-brand hover:bg-yellow-hover text-[oklch(0.12_0_0)] text-sm font-semibold transition-colors flex items-center justify-center"
-            >
-              View cookbook
-            </Link>
-            <Link
-              href="/shrey"
-              className="h-10 rounded-lg border border-border bg-background hover:bg-muted text-sm font-medium text-foreground transition-colors flex items-center justify-center"
-            >
-              Go to profile
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -74,7 +58,7 @@ export default function NewCookbookPage() {
         {/* Header */}
         <div className="mb-8">
           <Link
-            href="/shrey"
+            href={username ? `/${username}` : "/"}
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             ← Back to profile
@@ -103,7 +87,7 @@ export default function NewCookbookPage() {
             />
             {name && (
               <p className="mt-1.5 text-xs text-muted-foreground font-mono">
-                forkable.com/you/cookbooks/{slug}
+                forkable.com/{username ?? "you"}/cookbooks/{slug}
               </p>
             )}
           </div>
@@ -146,98 +130,31 @@ export default function NewCookbookPage() {
                     <p className="text-sm font-semibold text-foreground">{label}</p>
                     <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{sub}</p>
                   </div>
+                  {isPublic === value && (
+                    <CheckCircle2 className="w-4 h-4 text-yellow-brand ml-auto shrink-0" />
+                  )}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Add recipes */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <label className="text-sm font-medium text-foreground">
-                Add recipes
-                <span className="ml-2 text-xs font-normal text-muted-foreground">
-                  ({selectedRecipes.size} selected)
-                </span>
-              </label>
-            </div>
-
-            {/* Your recipes */}
-            {shreyRecipes.length > 0 && (
-              <div className="mb-4">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Your recipes</p>
-                <div className="space-y-2">
-                  {shreyRecipes.map((r) => (
-                    <button
-                      key={r.id}
-                      onClick={() => toggleRecipe(r.id)}
-                      className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left ${
-                        selectedRecipes.has(r.id)
-                          ? "border-yellow-brand bg-yellow-subtle dark:bg-yellow-muted"
-                          : "border-border bg-card hover:border-yellow-brand/40"
-                      }`}
-                    >
-                      <div className="shrink-0 w-10 h-10 rounded-md overflow-hidden bg-muted">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={r.imageUrl} alt={r.name} className="w-full h-full object-cover" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{r.name}</p>
-                        <p className="text-xs text-muted-foreground">⭐ {r.stars.toLocaleString()}</p>
-                      </div>
-                      {selectedRecipes.has(r.id) ? (
-                        <CheckCircle2 className="w-4 h-4 text-yellow-brand shrink-0" />
-                      ) : (
-                        <Plus className="w-4 h-4 text-muted-foreground shrink-0" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Other recipes */}
-            <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Browse recipes</p>
-              <div className="space-y-2">
-                {otherRecipes.map((r) => (
-                  <button
-                    key={r.id}
-                    onClick={() => toggleRecipe(r.id)}
-                    className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left ${
-                      selectedRecipes.has(r.id)
-                        ? "border-yellow-brand bg-yellow-subtle dark:bg-yellow-muted"
-                        : "border-border bg-card hover:border-yellow-brand/40"
-                    }`}
-                  >
-                    <div className="shrink-0 w-10 h-10 rounded-md overflow-hidden bg-muted">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={r.imageUrl} alt={r.name} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{r.name}</p>
-                      <p className="text-xs text-muted-foreground">by {r.owner.username} · ⭐ {r.stars.toLocaleString()}</p>
-                    </div>
-                    {selectedRecipes.has(r.id) ? (
-                      <CheckCircle2 className="w-4 h-4 text-yellow-brand shrink-0" />
-                    ) : (
-                      <Plus className="w-4 h-4 text-muted-foreground shrink-0" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+          {error && (
+            <p className="text-sm text-red-500 bg-red-500/10 rounded-lg px-3 py-2">{error}</p>
+          )}
 
           {/* Create button */}
           <button
-            onClick={() => setCreated(true)}
-            disabled={!name.trim()}
+            onClick={handleCreate}
+            disabled={!name.trim() || saving}
             className="w-full h-10 rounded-lg bg-yellow-brand hover:bg-yellow-hover text-[oklch(0.12_0_0)] text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            <Library className="w-4 h-4" />
-            Create cookbook
-            <ChevronRight className="w-4 h-4" />
+            {saving ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Library className="w-4 h-4" />
+            )}
+            {saving ? "Creating..." : "Create cookbook"}
+            {!saving && <ChevronRight className="w-4 h-4" />}
           </button>
         </div>
       </div>
