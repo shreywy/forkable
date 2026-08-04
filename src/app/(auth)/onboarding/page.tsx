@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
+import { useTheme } from "next-themes";
 import {
   Camera, MapPin, Globe, AtSign,
   Check, ChevronRight, ChevronLeft,
   Sparkles, Sun, Moon, Monitor, UserPlus, Utensils, Link2,
 } from "lucide-react";
-import { MOCK_USERS } from "@/lib/mock-data";
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 
@@ -27,12 +26,8 @@ const COOKING_STYLE_TAGS = [
   "Budget-Friendly", "Fine Dining", "Comfort Food", "Healthy", "Kid-Friendly",
 ];
 
-const SUGGESTED_USERS = [
-  MOCK_USERS.nonna_rosa,
-  MOCK_USERS.kenji_tokyo,
-  MOCK_USERS.vegan_vivienne,
-  MOCK_USERS.gluten_free_gary,
-];
+// Avatar seeds for the picker — DiceBear lorelei style
+const AVATAR_SEEDS = ["cookie", "saffron", "umami", "basil", "kimchi", "miso", "tacos", "ramen"];
 
 const STEPS = [
   { id: "profile", label: "Profile" },
@@ -42,7 +37,15 @@ const STEPS = [
   { id: "follow", label: "Who to follow" },
 ];
 
-// ── Step sub-components ───────────────────────────────────────────────────────
+type SuggestedUser = {
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  bio: string | null;
+  followerCount: number;
+};
+
+// ── Sub-components ────────────────────────────────────────────────────────────
 
 function TagPill({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
   return (
@@ -65,6 +68,7 @@ function TagPill({ label, selected, onClick }: { label: string; selected: boolea
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { setTheme: applyTheme } = useTheme();
   const [step, setStep] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -87,13 +91,29 @@ export default function OnboardingPage() {
   const [selectedStyle, setSelectedStyle] = useState<Set<string>>(new Set());
 
   // Step 3: Theme
-  const [theme, setTheme] = useState<"dark" | "light" | "system">("dark");
+  const [theme, setThemeState] = useState<"dark" | "light" | "system">("dark");
 
   // Step 4: Who to follow
+  const [suggestedUsers, setSuggestedUsers] = useState<SuggestedUser[]>([]);
   const [following, setFollowing] = useState<Set<string>>(new Set());
+  const [followerCounts, setFollowerCounts] = useState<Record<string, number>>({});
 
-  // Step 5: Done
+  // Misc
   const [saving, setSaving] = useState(false);
+  const [followingInProgress, setFollowingInProgress] = useState<Set<string>>(new Set());
+
+  // Fetch suggested users on mount
+  useEffect(() => {
+    fetch("/api/users/suggestions")
+      .then((r) => r.json())
+      .then((users: SuggestedUser[]) => {
+        setSuggestedUsers(users);
+        const counts: Record<string, number> = {};
+        for (const u of users) counts[u.username] = u.followerCount;
+        setFollowerCounts(counts);
+      })
+      .catch(() => {}); // fail silently
+  }, []);
 
   const toggleSet = (set: Set<string>, setFn: (s: Set<string>) => void, value: string) => {
     const next = new Set(set);
@@ -108,17 +128,72 @@ export default function OnboardingPage() {
     setAvatarUrl(url);
   };
 
+  const handleThemeChange = (t: "dark" | "light" | "system") => {
+    setThemeState(t);
+    applyTheme(t); // apply immediately so the user sees the change
+  };
+
+  const handleFollow = async (targetUsername: string) => {
+    if (followingInProgress.has(targetUsername)) return;
+    const isFollowing = following.has(targetUsername);
+    const action = isFollowing ? "unfollow" : "follow";
+
+    setFollowingInProgress((prev) => new Set(prev).add(targetUsername));
+    try {
+      const res = await fetch("/api/follow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetUsername, action }),
+      });
+      const data = await res.json() as { success?: boolean; followerCount?: number };
+      if (data.success) {
+        setFollowing((prev) => {
+          const next = new Set(prev);
+          if (isFollowing) next.delete(targetUsername); else next.add(targetUsername);
+          return next;
+        });
+        if (typeof data.followerCount === "number") {
+          setFollowerCounts((prev) => ({ ...prev, [targetUsername]: data.followerCount as number }));
+        }
+      }
+    } catch {
+      // fail silently
+    } finally {
+      setFollowingInProgress((prev) => { const next = new Set(prev); next.delete(targetUsername); return next; });
+    }
+  };
+
   const handleFinish = async () => {
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 1200));
+    try {
+      await fetch("/api/onboarding/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          displayName: displayName || undefined,
+          username: username || undefined,
+          bio: bio || undefined,
+          location: location || undefined,
+          website: website || undefined,
+          twitter: twitter || undefined,
+          instagram: instagram || undefined,
+          githubHandle: githubHandle || undefined,
+          avatarUrl: avatarUrl || undefined,
+          cuisineTags: [...selectedCuisines],
+          dietaryTags: [...selectedDietary],
+          styleTags: [...selectedStyle],
+          theme,
+        }),
+      });
+    } catch {
+      // if save fails, still proceed
+    }
     setSaving(false);
     router.push("/feed");
   };
 
   const totalSteps = STEPS.length;
   const isLast = step === totalSteps - 1;
-
-  // Progress %
   const progressPct = ((step) / totalSteps) * 100;
 
   return (
@@ -137,7 +212,6 @@ export default function OnboardingPage() {
             style={{ width: `${progressPct + (1 / totalSteps) * 100}%` }}
           />
         </div>
-        {/* Step pills */}
         <div className="flex items-center justify-between mt-3">
           {STEPS.map((s, i) => (
             <div key={s.id} className="flex flex-col items-center gap-1">
@@ -171,7 +245,8 @@ export default function OnboardingPage() {
               onClick={() => fileRef.current?.click()}
             >
               {avatarUrl ? (
-                <Image src={avatarUrl} alt="Avatar" fill className="object-cover" />
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <span className="text-3xl font-bold text-muted-foreground">
@@ -191,30 +266,36 @@ export default function OnboardingPage() {
             >
               Upload photo
             </button>
-            {/* Or use DiceBear */}
+
+            {/* DiceBear avatar picker */}
             {!avatarUrl && (
               <div className="flex gap-2 flex-wrap justify-center">
-                {["shrey2", "cook1", "chef99", "foody"].map((seed) => (
-                  <button
-                    key={seed}
-                    type="button"
-                    onClick={() => setAvatarUrl(`https://api.dicebear.com/9.x/lorelei/svg?seed=${seed}`)}
-                    className="w-9 h-9 rounded-full overflow-hidden border-2 border-border hover:border-yellow-brand transition-colors"
-                  >
-                    <Image
-                      src={`https://api.dicebear.com/9.x/lorelei/svg?seed=${seed}`}
-                      alt={seed}
-                      width={36}
-                      height={36}
-                    />
-                  </button>
-                ))}
+                {AVATAR_SEEDS.map((seed) => {
+                  const url = `https://api.dicebear.com/9.x/lorelei/svg?seed=${seed}`;
+                  return (
+                    <button
+                      key={seed}
+                      type="button"
+                      onClick={() => setAvatarUrl(url)}
+                      className="w-9 h-9 rounded-full overflow-hidden border-2 border-border hover:border-yellow-brand transition-colors bg-muted"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={url}
+                        alt={seed}
+                        width={36}
+                        height={36}
+                        className="w-full h-full"
+                      />
+                    </button>
+                  );
+                })}
                 <span className="text-[10px] text-muted-foreground self-center ml-1">or pick an avatar</span>
               </div>
             )}
           </div>
 
-          {/* Display name */}
+          {/* Display name + username */}
           <div className="space-y-3">
             <div>
               <label className="block text-xs font-medium text-foreground mb-1.5">Display name</label>
@@ -224,7 +305,13 @@ export default function OnboardingPage() {
                 onChange={(e) => {
                   setDisplayName(e.target.value);
                   if (!username) {
-                    setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, ""));
+                    setUsername(
+                      e.target.value
+                        .toLowerCase()
+                        .replace(/[^a-z0-9_]/g, "_")
+                        .replace(/_+/g, "_")
+                        .replace(/^_|_$/g, ""),
+                    );
                   }
                 }}
                 placeholder="Nonna Rosa"
@@ -406,7 +493,7 @@ export default function OnboardingPage() {
                 <button
                   key={t}
                   type="button"
-                  onClick={() => setTheme(t)}
+                  onClick={() => handleThemeChange(t)}
                   className={`relative flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all ${
                     theme === t
                       ? "border-yellow-brand bg-yellow-subtle dark:bg-yellow-muted"
@@ -414,14 +501,20 @@ export default function OnboardingPage() {
                   }`}
                 >
                   {/* Mini preview */}
-                  <div className={`w-full h-16 rounded-xl overflow-hidden ${t === "light" ? "bg-white border border-gray-200" : t === "dark" ? "bg-[#1a1a1a]" : "bg-gradient-to-br from-[#1a1a1a] to-white"}`}>
+                  <div className={`w-full h-16 rounded-xl overflow-hidden ${
+                    t === "light"
+                      ? "bg-white border border-gray-200"
+                      : t === "dark"
+                        ? "bg-[#1a1a1a]"
+                        : "bg-gradient-to-br from-[#1a1a1a] to-white"
+                  }`}>
                     <div className={`h-3 mx-2 mt-2 rounded-full ${t === "light" ? "bg-gray-200" : "bg-white/10"}`} />
                     <div className={`h-2 mx-2 mt-1.5 w-3/4 rounded-full ${t === "light" ? "bg-yellow-300" : "bg-yellow-brand/60"}`} />
                     <div className={`h-2 mx-2 mt-1.5 w-1/2 rounded-full ${t === "light" ? "bg-gray-100" : "bg-white/5"}`} />
                   </div>
                   <Icon className={`w-4 h-4 ${theme === t ? "text-yellow-brand" : "text-muted-foreground"}`} />
                   <div className="text-center">
-                    <p className={`text-sm font-semibold ${theme === t ? "text-foreground" : "text-foreground"}`}>{labels[t]}</p>
+                    <p className="text-sm font-semibold text-foreground">{labels[t]}</p>
                     <p className="text-[10px] text-muted-foreground">{descriptions[t]}</p>
                   </div>
                   {theme === t && (
@@ -433,13 +526,6 @@ export default function OnboardingPage() {
               );
             })}
           </div>
-
-          <div className="p-4 rounded-xl bg-muted/50 border border-border">
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              <strong className="text-foreground">Dark mode</strong> is our recommended default -
-              great for late-night cooking sessions and easier on the eyes in the kitchen.
-            </p>
-          </div>
         </div>
       )}
 
@@ -448,53 +534,71 @@ export default function OnboardingPage() {
         <div className="space-y-6">
           <div>
             <h2 className="text-xl font-bold text-foreground">Follow some cooks</h2>
-            <p className="text-sm text-muted-foreground mt-1">Your feed will be empty without some follows. Here are some great chefs to start with.</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Your feed will be empty without some follows. Here are some great chefs to start with.
+            </p>
           </div>
 
           <div className="space-y-3">
-            {SUGGESTED_USERS.map((user) => {
-              const isFollowing = following.has(user.username);
-              return (
-                <div
-                  key={user.username}
-                  className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card"
-                >
-                  <Image
-                    src={user.avatarUrl}
-                    alt={user.displayName}
-                    width={44}
-                    height={44}
-                    className="rounded-full bg-muted shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground">{user.displayName}</p>
-                    <p className="text-xs text-muted-foreground">@{user.username}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 truncate">{user.bio}</p>
+            {suggestedUsers.length === 0 ? (
+              <div className="text-sm text-muted-foreground text-center py-6">Loading cooks…</div>
+            ) : (
+              suggestedUsers.map((user) => {
+                const isFollowing = following.has(user.username);
+                const inProgress = followingInProgress.has(user.username);
+                const count = followerCounts[user.username] ?? user.followerCount;
+                return (
+                  <div
+                    key={user.username}
+                    className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card"
+                  >
+                    {user.avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={user.avatarUrl}
+                        alt={user.displayName}
+                        width={44}
+                        height={44}
+                        className="rounded-full bg-muted shrink-0 w-11 h-11 object-cover"
+                      />
+                    ) : (
+                      <div className="w-11 h-11 rounded-full bg-muted shrink-0 flex items-center justify-center text-lg font-bold text-muted-foreground">
+                        {user.displayName[0]}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground">{user.displayName}</p>
+                      <p className="text-xs text-muted-foreground">@{user.username}</p>
+                      {user.bio && <p className="text-xs text-muted-foreground mt-0.5 truncate">{user.bio}</p>}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs text-muted-foreground hidden sm:block">
+                        {count.toLocaleString()} followers
+                      </span>
+                      <button
+                        type="button"
+                        disabled={inProgress}
+                        onClick={() => handleFollow(user.username)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-60 ${
+                          isFollowing
+                            ? "bg-muted text-foreground border border-border hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30"
+                            : "bg-yellow-brand hover:bg-yellow-hover text-[oklch(0.12_0_0)]"
+                        }`}
+                      >
+                        {isFollowing ? (
+                          <><Check className="w-3 h-3" /> Following</>
+                        ) : (
+                          <><UserPlus className="w-3 h-3" /> Follow</>
+                        )}
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs text-muted-foreground hidden sm:block">{user.followers.toLocaleString()} followers</span>
-                    <button
-                      type="button"
-                      onClick={() => toggleSet(following, setFollowing, user.username)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                        isFollowing
-                          ? "bg-muted text-foreground border border-border hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30"
-                          : "bg-yellow-brand hover:bg-yellow-hover text-[oklch(0.12_0_0)]"
-                      }`}
-                    >
-                      {isFollowing ? (
-                        <><Check className="w-3 h-3" /> Following</>
-                      ) : (
-                        <><UserPlus className="w-3 h-3" /> Follow</>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
 
-          {following.size === 0 && (
+          {following.size === 0 && suggestedUsers.length > 0 && (
             <p className="text-xs text-muted-foreground text-center">
               Follow at least one cook to get started, or skip and discover later on the{" "}
               <span className="text-yellow-brand">Explore</span> page.
