@@ -1,8 +1,12 @@
 import { prisma } from "@/lib/prisma";
+import { cached } from "@/lib/cache";
 import { TrendingClient } from "./TrendingClient";
 
 export default async function TrendingPage() {
-  const [topByStars, topByForks, topByTweaks, hotNow, risingCooks] = await Promise.all([
+  const [topByStars, topByForks, topByTweaks, hotNow, risingCooks] = await cached(
+    "trending:v1",
+    300,
+    () => Promise.all([
     prisma.recipe.findMany({
       where: { isPublic: true },
       orderBy: { starCount: "desc" },
@@ -37,7 +41,8 @@ export default async function TrendingPage() {
         _count: { select: { recipes: true, followers: true } },
       },
     }),
-  ]);
+    ]),
+  );
 
   const mapRecipe = (r: (typeof topByStars)[0]) => ({
     id: r.id,

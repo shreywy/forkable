@@ -1,12 +1,18 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { cached } from "@/lib/cache";
 import { ExploreClient } from "./ExploreClient";
 
 export default async function ExplorePage() {
   const session = await auth();
   const userId = (session?.user as { id?: string } | undefined)?.id ?? null;
 
-  const [recipes, cookbooks, featuredCooks, allIngredients, pantryItems] = await Promise.all([
+  // Public catalog data is identical for every visitor - cache it.
+  // Pantry items are per-user and fetched fresh below.
+  const [recipes, cookbooks, featuredCooks, allIngredients] = await cached(
+    "explore:v1",
+    120,
+    () => Promise.all([
     prisma.recipe.findMany({
       where: { isPublic: true },
       orderBy: { starCount: "desc" },
@@ -53,14 +59,15 @@ export default async function ExplorePage() {
       select: { id: true, slug: true, name: true },
       orderBy: { name: "asc" },
     }),
+    ]),
+  );
 
-    userId
-      ? prisma.pantryItem.findMany({
-          where: { userId },
-          select: { ingredientId: true },
-        })
-      : Promise.resolve([]),
-  ]);
+  const pantryItems = userId
+    ? await prisma.pantryItem.findMany({
+        where: { userId },
+        select: { ingredientId: true },
+      })
+    : [];
 
   return (
     <ExploreClient
