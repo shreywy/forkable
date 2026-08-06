@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { toSlug } from "@/lib/slug";
 
 // ── Schemas ────────────────────────────────────────────────────────────────────
 
@@ -39,10 +40,6 @@ const CreateRecipeSchema = z.object({
 export type CreateRecipeInput = z.infer<typeof CreateRecipeSchema>;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function toSlug(name: string): string {
-  return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-}
 
 async function ensureTag(name: string) {
   const slug = toSlug(name);

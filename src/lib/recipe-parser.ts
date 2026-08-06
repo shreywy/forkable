@@ -316,13 +316,21 @@ export function parseTextRecipe(text: string): ParsedRecipe {
       const clean = line.replace(/^\d+[\.\)]\s*/, "").trim();
       if (clean.length > 5) instructions.push(clean);
     } else if (currentSection === "description") {
-      descLines.push(line);
+      // No section headers yet — the first ingredient-looking line flips us
+      // into auto-detect mode so headerless pastes still parse.
+      if (looksLikeIngredient(line)) {
+        ingredients.push(line.replace(/^[-•*]\s*/, "").trim());
+        currentSection = "unknown";
+      } else {
+        descLines.push(line);
+      }
     } else {
-      // Unknown section — auto-detect
-      const clean = line.replace(/^[-•*\d\.\)]\s*/, "").trim();
-      if (looksLikeIngredient(line)) { ingredients.push(clean); }
-      else if (looksLikeInstruction(line)) { instructions.push(clean.replace(/^\d+[\.\)]\s*/, "")); }
-      else if (clean.length > 3) { descLines.push(clean); }
+      // Unknown section — auto-detect. Ingredients keep their leading
+      // quantities; instructions drop bullet/number prefixes.
+      const unbulleted = line.replace(/^[-•*]\s*/, "").trim();
+      if (looksLikeIngredient(unbulleted)) { ingredients.push(unbulleted); }
+      else if (looksLikeInstruction(unbulleted)) { instructions.push(unbulleted.replace(/^\d+[\.\)]\s*/, "")); }
+      else if (unbulleted.length > 3) { descLines.push(unbulleted); }
     }
   }
 
