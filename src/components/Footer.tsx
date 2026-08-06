@@ -6,6 +6,7 @@ const YEAR = new Date().getFullYear();
 const LINKS = [
   { label: "Explore", href: "/explore" },
   { label: "Trending", href: "/trending" },
+  { label: "Ingredients", href: "/ingredients" },
   { label: "Terms", href: "/terms" },
   { label: "Privacy", href: "/privacy" },
 ];
