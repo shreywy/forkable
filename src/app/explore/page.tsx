@@ -1,9 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { cached } from "@/lib/cache";
+import { searchRecipeIds } from "@/lib/search";
 import { ExploreClient } from "./ExploreClient";
 
-export default async function ExplorePage() {
+export default async function ExplorePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q } = await searchParams;
   const session = await auth();
   const userId = (session?.user as { id?: string } | undefined)?.id ?? null;
 
@@ -62,12 +68,16 @@ export default async function ExplorePage() {
     ]),
   );
 
-  const pantryItems = userId
-    ? await prisma.pantryItem.findMany({
-        where: { userId },
-        select: { ingredientId: true },
-      })
-    : [];
+  const [pantryItems, ftsResultIds] = await Promise.all([
+    userId
+      ? prisma.pantryItem.findMany({
+          where: { userId },
+          select: { ingredientId: true },
+        })
+      : Promise.resolve([]),
+    // Postgres full-text search ranking for the current ?q= (null when no query)
+    q?.trim() ? searchRecipeIds(q, 100) : Promise.resolve(null),
+  ]);
 
   return (
     <ExploreClient
@@ -114,6 +124,7 @@ export default async function ExplorePage() {
       allIngredients={allIngredients}
       pantryIngredientIds={new Set(pantryItems.map((p) => p.ingredientId))}
       isLoggedIn={!!userId}
+      ftsResultIds={ftsResultIds}
     />
   );
 }

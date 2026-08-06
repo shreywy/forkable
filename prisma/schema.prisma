@@ -128,6 +128,9 @@ model Recipe {
   authorId String
   author   User   @relation(fields: [authorId], references: [id])
 
+  // Full-text search vector (generated column, weighted name > description > story)
+  searchVector Unsupported("tsvector")?
+
   // Denormalized counters (updated atomically in server actions)
   starCount      Int @default(0)
   forkCount      Int @default(0)

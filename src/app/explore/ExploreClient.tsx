@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocalStorage } from "@/lib/use-local-storage";
 import { RecipeCard } from "@/components/RecipeCard";
@@ -45,6 +45,8 @@ interface ExploreClientProps {
   allIngredients: { id: string; slug: string; name: string }[];
   pantryIngredientIds: Set<string>;
   isLoggedIn: boolean;
+  /** Ranked recipe ids from Postgres full-text search for the current ?q= (null when no query) */
+  ftsResultIds?: string[] | null;
 }
 
 // ── Tag definitions ────────────────────────────────────────────────────────────
@@ -65,7 +67,7 @@ const DIET_OPTIONS = ["Vegan", "Vegetarian", "Gluten-free", "Dairy-free", "Nut-f
 
 type ExploreTab = "recipes" | "ingredients";
 
-export function ExploreClient({ recipes, cookbooks, featuredCooks, allIngredients, pantryIngredientIds: initialPantryIds, isLoggedIn }: ExploreClientProps) {
+export function ExploreClient({ recipes, cookbooks, featuredCooks, allIngredients, pantryIngredientIds: initialPantryIds, isLoggedIn, ftsResultIds = null }: ExploreClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [exploreTab, setExploreTab] = useState<ExploreTab>("recipes");
@@ -82,6 +84,18 @@ export function ExploreClient({ recipes, cookbooks, featuredCooks, allIngredient
     setLastUrlQuery(urlQuery);
     if (urlQuery) setQuery(urlQuery);
   }
+
+  // Debounced URL sync: typing re-runs the server-side full-text search
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed === (urlQuery ?? "")) return;
+    const t = setTimeout(() => {
+      router.replace(trimmed ? `/explore?q=${encodeURIComponent(trimmed)}` : "/explore", {
+        scroll: false,
+      });
+    }, 400);
+    return () => clearTimeout(t);
+  }, [query, urlQuery, router]);
 
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState(SORT_OPTIONS[0]);
@@ -208,14 +222,28 @@ export function ExploreClient({ recipes, cookbooks, featuredCooks, allIngredient
   }, [recipes, includedTags, excludedTags, selectedDiets, sortBy]);
 
   // ── Dynamic search results ─────────────────────────────────────────────────
+  // Substring matches give instant feedback while typing; once the URL syncs,
+  // server-side Postgres full-text results (ftsResultIds, rank-ordered) are
+  // merged in so matches on story text and stemmed words appear too.
   const q = query.trim().toLowerCase();
+  const ftsActive = ftsResultIds !== null && q === (urlQuery ?? "").trim().toLowerCase();
   const directMatches = q
-    ? filtered.filter(
-        (r) =>
-          r.name.toLowerCase().includes(q) ||
-          r.slug.toLowerCase().includes(q) ||
-          r.author.username.toLowerCase().includes(q),
-      )
+    ? (() => {
+        const substring = filtered.filter(
+          (r) =>
+            r.name.toLowerCase().includes(q) ||
+            r.slug.toLowerCase().includes(q) ||
+            r.author.username.toLowerCase().includes(q),
+        );
+        if (!ftsActive) return substring;
+        const rank = new Map(ftsResultIds!.map((id, i) => [id, i]));
+        const substringIds = new Set(substring.map((r) => r.id));
+        const merged = filtered.filter((r) => rank.has(r.id) || substringIds.has(r.id));
+        merged.sort(
+          (a, b) => (rank.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(b.id) ?? Number.MAX_SAFE_INTEGER),
+        );
+        return merged;
+      })()
     : filtered;
 
   const indirectMatches = q
