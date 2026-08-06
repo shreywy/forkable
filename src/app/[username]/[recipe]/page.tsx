@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { RecipePageTabs } from "@/components/recipe/RecipePageTabs";
 import { computeBlame } from "@/lib/blame";
+import { getSimilarRecipes } from "@/lib/similar";
+import { SimilarRecipes } from "@/components/recipe/SimilarRecipes";
 import type { RecipeSnapshot } from "@/lib/snapshot";
 import type { RecipePageData, FileTreeNode, TweakData, TasteTestData, RecipeCardData } from "@/lib/types";
 
@@ -274,6 +276,8 @@ export default async function RecipePage({ params }: Props) {
       }
     : null;
 
+  const similarRecipes = await getSimilarRecipes(recipe.id, 4);
+
   return (
     <div className="min-h-screen bg-background">
       <RecipePageTabs
@@ -286,6 +290,9 @@ export default async function RecipePage({ params }: Props) {
         blame={blame}
         initialIsStarred={isStarred}
       />
+      <div className="max-w-[1280px] mx-auto px-4 pb-10">
+        <SimilarRecipes recipes={similarRecipes} />
+      </div>
     </div>
   );
 }

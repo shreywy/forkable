@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { CommandPalette } from "@/components/CommandPalette";
 import { useSession, signOut } from "next-auth/react";
 
 // Mock notification data
@@ -89,9 +90,13 @@ export function Navbar() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search recipes..."
-            className="w-full h-8 pl-8 pr-3 text-sm bg-muted rounded-md border border-border focus:outline-none focus:ring-2 focus:ring-yellow-brand focus:border-yellow-brand placeholder:text-muted-foreground transition-all"
+            className="w-full h-8 pl-8 pr-12 text-sm bg-muted rounded-md border border-border focus:outline-none focus:ring-2 focus:ring-yellow-brand focus:border-yellow-brand placeholder:text-muted-foreground transition-all"
           />
+          <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center gap-0.5 text-[10px] text-muted-foreground border border-border rounded px-1 py-0.5 pointer-events-none">
+            Ctrl K
+          </kbd>
         </form>
+        <CommandPalette />
 
         {/* ── Nav links ─────────────────────────────────────────── */}
         <nav className="hidden md:flex items-center gap-1">
