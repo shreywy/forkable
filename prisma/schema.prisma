@@ -147,6 +147,7 @@ model Recipe {
 
   // Relations
   versions        RecipeVersion[]
+  dailyStats      RecipeDailyStat[]
   components      Component[]
   tags            RecipeTag[]
   stars           Star[]
@@ -179,6 +180,19 @@ model RecipeVersion {
 
   @@index([recipeId, createdAt])
   @@index([authorId])
+}
+
+// ─── Daily view stats (powers the owner insights dashboard) ──────────────────
+
+model RecipeDailyStat {
+  recipeId String
+  day      DateTime @db.Date
+  views    Int      @default(0)
+
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@id([recipeId, day])
+  @@index([recipeId, day])
 }
 
 // ─── Components (Folders + Files) ────────────────────────────────────────────

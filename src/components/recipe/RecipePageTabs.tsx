@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import {
   BookOpen, GitCommitHorizontal, GitFork, ChefHat,
   Star, Plus, GitMerge, X, Check, ChevronDown, ChevronUp,
-  Eye, Share2, Utensils, Copy, Pencil, Loader2, Send, MessageSquare,
+  Eye, Share2, Utensils, Copy, Pencil, Loader2, Send, MessageSquare, BarChart3,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -269,15 +269,24 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts: initialTasteTsts, fo
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* Edit button - only for the recipe owner (shrey in Phase 1) */}
-              {owner.username === "shrey" && (
-                <button
-                  onClick={() => router.push(`/${owner.username}/${recipe.slug}/edit`)}
-                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-border bg-card hover:bg-muted text-xs font-medium text-foreground transition-colors"
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                  Edit
-                </button>
+              {/* Owner-only: Edit + Insights */}
+              {isOwnRecipe && (
+                <>
+                  <button
+                    onClick={() => router.push(`/${owner.username}/${recipe.slug}/edit`)}
+                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-border bg-card hover:bg-muted text-xs font-medium text-foreground transition-colors"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => router.push(`/${owner.username}/${recipe.slug}/insights`)}
+                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-border bg-card hover:bg-muted text-xs font-medium text-foreground transition-colors"
+                  >
+                    <BarChart3 className="w-3.5 h-3.5" />
+                    Insights
+                  </button>
+                </>
               )}
 
               {/* Cook Mode */}

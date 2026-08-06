@@ -6,6 +6,7 @@ import { computeBlame } from "@/lib/blame";
 import { getSimilarRecipes } from "@/lib/similar";
 import { SimilarRecipes } from "@/components/recipe/SimilarRecipes";
 import { recipeJsonLd, jsonLdScript } from "@/lib/jsonld";
+import { ViewTracker } from "@/components/recipe/ViewTracker";
 import type { RecipeSnapshot } from "@/lib/snapshot";
 import type { RecipePageData, FileTreeNode, TweakData, TasteTestData, RecipeCardData } from "@/lib/types";
 
@@ -349,6 +350,7 @@ export default async function RecipePage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonld) }}
       />
+      <ViewTracker username={username} slug={recipeSlug} />
       <RecipePageTabs
         recipe={recipeData}
         tweaks={tweaks}
