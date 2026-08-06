@@ -432,8 +432,15 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts: initialTasteTsts, fo
                 </div>
 
                 <div className="border border-border rounded-xl overflow-hidden divide-y divide-border">
-                  {tweaks.map((tweak) => (
-                    <TweakRow key={tweak.id} tweak={tweak} />
+                  {tweaks.map((tweak, i) => (
+                    <TweakRow
+                      key={tweak.id}
+                      tweak={tweak}
+                      prev={tweaks[i + 1] ?? null}
+                      recipePath={`/${owner.username}/${recipe.slug}`}
+                      isOwner={isOwnRecipe}
+                      isLatest={i === 0}
+                    />
                   ))}
                 </div>
               </div>
@@ -737,9 +744,46 @@ function SectionFile({
   );
 }
 
-function TweakRow({ tweak }: { tweak: TweakData }) {
+function TweakRow({
+  tweak,
+  prev,
+  recipePath,
+  isOwner,
+  isLatest,
+}: {
+  tweak: TweakData;
+  /** the version immediately before this one (older), if visible */
+  prev: TweakData | null;
+  recipePath: string;
+  isOwner: boolean;
+  isLatest: boolean;
+}) {
   const [expanded, setExpanded] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+  const router = useRouter();
   const dateStr = fmtDate(tweak.createdAt);
+  const canCompare = tweak.hasSnapshot && prev !== null && prev.hasSnapshot;
+
+  const handleRestore = async () => {
+    if (restoring) return;
+    const confirmed = window.confirm(
+      "Restore this version? The recipe's ingredients, steps, description and servings will be replaced, and a new tweak will record the restore.",
+    );
+    if (!confirmed) return;
+    setRestoring(true);
+    setRestoreError(null);
+    try {
+      const { restoreVersion } = await import("@/lib/actions/versions");
+      const res = await restoreVersion(tweak.id);
+      if (res.error) setRestoreError(res.error);
+      else router.refresh();
+    } catch {
+      setRestoreError("Something went wrong. Please try again.");
+    } finally {
+      setRestoring(false);
+    }
+  };
   return (
     <div className="px-4 py-3 hover:bg-muted/30 transition-colors">
       <div className="flex items-center gap-3">
@@ -773,14 +817,37 @@ function TweakRow({ tweak }: { tweak: TweakData }) {
         </div>
       </div>
       {expanded && (
-        <div className="mt-3 ml-7 rounded-lg border border-border overflow-hidden text-xs font-mono">
-          <div className="bg-green-500/10 border-b border-border px-3 py-2 text-green-600 dark:text-green-400">
-            + {tweak.message} - added by {tweak.author.username} on {dateStr}
+        <div className="mt-3 ml-7 rounded-lg border border-border overflow-hidden">
+          <div className="px-3 py-2 text-muted-foreground bg-muted/30 text-xs font-mono">
+            {tweak.author.username} committed on {dateStr} ·{" "}
+            <span className="text-green-500">+{tweak.additions}</span>{" "}
+            <span className="text-red-400">-{tweak.deletions}</span>
           </div>
-          <div className="px-3 py-2 text-muted-foreground bg-muted/30">
-            <p className="text-[11px]">
-              sha: {tweak.id}a3f9c2d · {tweak.author.username} committed on {dateStr}
-            </p>
+          <div className="px-3 py-2 flex flex-wrap items-center gap-2 bg-card">
+            {canCompare ? (
+              <Link
+                href={`${recipePath}/compare/${prev!.id}...${tweak.id}`}
+                className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-xs font-medium transition-colors"
+              >
+                <GitCommitHorizontal className="w-3 h-3" />
+                View changes
+              </Link>
+            ) : (
+              <span className="text-[11px] text-muted-foreground">
+                {prev === null ? "First recorded tweak" : "No snapshot for this range"}
+              </span>
+            )}
+            {isOwner && !isLatest && tweak.hasSnapshot && (
+              <button
+                onClick={handleRestore}
+                disabled={restoring}
+                className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-border bg-background hover:bg-yellow-subtle dark:hover:bg-yellow-muted text-xs font-medium transition-colors disabled:opacity-60"
+              >
+                {restoring ? <Loader2 className="w-3 h-3 animate-spin" /> : <GitMerge className="w-3 h-3" />}
+                Restore this version
+              </button>
+            )}
+            {restoreError && <span className="text-[11px] text-red-500">{restoreError}</span>}
           </div>
         </div>
       )}

@@ -51,6 +51,8 @@ export type TweakData = {
   createdAt: Date | string;
   additions: number;
   deletions: number;
+  /** true when this version stores a full content snapshot (enables compare/restore) */
+  hasSnapshot: boolean;
 };
 
 /** Reply on a taste test */

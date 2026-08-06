@@ -24,6 +24,21 @@
 - **Commit after each completed task** (`git add` specific paths, conventional-commit message given per task). Push to `origin main` after each *workstream* completes (Vercel auto-deploys from main).
 - **`npm run build` must pass before every push.**
 
+## Progress Log (KEEP THIS UPDATED - handoff state for whoever implements next)
+
+> Update this section after every completed task. If you are picking this plan up fresh: everything marked ✅ is implemented, committed, and pushed; ⏳ is in progress with notes; unmarked tasks are untouched.
+
+- ✅ **Task 1 (Vitest)** - `vitest.config.ts`, `src/lib/slug.ts` extracted, 18 tests in `src/lib/__tests__/{slug,recipe-parser}.test.ts`. Also improved `parseTextRecipe`: headerless pastes now auto-detect ingredients (first ingredient-looking line flips to auto-detect mode), and auto-detect no longer strips leading quantities from ingredients.
+- ✅ **Task 2 (CI)** - `.github/workflows/ci.yml` (lint, tsc, vitest, build with dummy env). Also fixed ALL pre-existing lint errors: `<a>`→`<Link>` (home, FollowButton, DiscoverFeed), removed `any` casts in seed, StepEditor TOOLS moved to module scope with `applyTool(kind)`, cook page setState-in-effect moved into fetch callback, ThemeProvider rewritten with `useSyncExternalStore` (new helper `src/lib/use-local-storage.ts` - reuse it for Task 20 shopping list), ExploreClient fridge state now uses `useLocalStorage` + guarded setState-during-render for URL query sync.
+- ✅ **Task 3 (Rate limiting)** - `src/lib/rate-limit.ts` (`checkRateLimit`, `rateLimitResponse`, `clientKey`) + 8 tests. Wired into: star (60/min), fork (10/min), follow (60/min), taste-tests (15/min), replies (15/min), import/url (5/min, ip-based when logged out), upload/presign (20/min). SETUP.html has Upstash section (Step 3.5).
+- ✅ **Task 4 (Cache)** - `src/lib/cache.ts` (`cached`, `invalidate`). Wrapped: trending page (key `trending:v1`, 300 s), explore public data (key `explore:v1`, 120 s; pantry stays uncached per-user).
+- ✅ **Tasks 7+8 (Snapshots + diff)** - `src/lib/snapshot.ts` (types + `buildSnapshot` + `countUnits`), `src/lib/diff.ts` (`diffSnapshots`, `diffWords`; identical-content reorders = no change), `src/lib/snapshot-db.ts` (`fetchSnapshotSource(db, recipeId)`). Wired into `createRecipe` + `createTweak` (actions/recipes.ts) and the PUT edit route. Seed re-run: 210 versions all carry snapshots; forks get TWO versions (inherited source snapshot backdated 3 days + tweak with real diff counts) so compare pages have demo data. NOTE: intra-lib imports in diff.ts/snapshot-db.ts are relative (`./snapshot`) so tsx can run the seed.
+- ✅ **Task 9 (Diff viewer)** - `src/components/recipe/DiffView.tsx` (server-safe; fields/tags/ingredients/steps sections, word-level `<del>`/highlight for modified steps), `src/app/[username]/[recipe]/compare/[range]/page.tsx` (`range` = `fromId...toId`, 404 on malformed/foreign/no-snapshot). `TweakData` gained `hasSnapshot`. TweakRow expanded panel now links "View changes" to compare (prev = next item in desc list).
+- ✅ **Task 10 (Restore)** - `src/lib/apply-snapshot.ts` (`applySnapshotTx`; does NOT restore name), `src/lib/catalog.ts` (`ensureTagTx`/`ensureIngredientTx` - actions/recipes.ts now uses these tx-aware versions), `src/lib/actions/versions.ts` (`restoreVersion` with confirm dialog in TweakRow, owner-only, non-latest, diff-based +/- counts).
+- Tasks 5, 6, 11-25: not started. Next up: Task 11 (merge suggestions) + Task 12 (blame) - `mergeSuggestion` belongs in `src/lib/actions/versions.ts`, reuse `applySnapshotTx`.
+
+**Environment notes for successors:** Windows + PowerShell; `gh` CLI not installed (verify CI on github.com). Never add Claude as git contributor (no Co-Authored-By). Push to `origin main` after each batch = Vercel deploy. Verify before push: `npm run lint && npx tsc --noEmit && npm test && npm run build`.
+
 ## Existing Code Map (context for implementers)
 
 - `prisma/schema.prisma` - models: User, Recipe, RecipeVersion (has `snapshot Json?`, currently always null), Component (FOLDER/FILE tree), Step (nested via `parentStepId`), Ingredient, ComponentIngredient, Star, Fork, Follow, Cookbook, CookbookRecipe, TasteTest (COMMENT | SUGGESTION with `diff Json?`), TasteTestReply, PantryItem, Tag, RecipeTag, Notification.

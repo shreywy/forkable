@@ -173,6 +173,7 @@ export default async function RecipePage({ params }: Props) {
     createdAt: v.createdAt.toISOString(),
     additions: v.additions,
     deletions: v.deletions,
+    hasSnapshot: v.snapshot !== null,
   }));
 
   // Taste tests (with replies)
