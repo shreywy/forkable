@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { RecipeCard } from "@/components/RecipeCard";
 import { PantryCarousel } from "@/components/PantryCarousel";
 import { DiscoverFeed } from "@/components/DiscoverFeed";
@@ -74,18 +75,18 @@ export default async function HomePage() {
 
           {/* ── CTAs ─────────────────────────────────────────────────────── */}
           <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <a
+            <Link
               href="/explore"
               className="inline-flex items-center justify-center h-10 px-6 rounded-lg bg-yellow-brand hover:bg-yellow-hover text-foreground font-medium text-sm transition-colors shadow-sm"
             >
               Explore recipes
-            </a>
-            <a
+            </Link>
+            <Link
               href="/new"
               className="inline-flex items-center justify-center h-10 px-6 rounded-lg border border-border bg-background hover:bg-yellow-subtle dark:hover:bg-yellow-muted text-foreground font-medium text-sm transition-colors"
             >
               Add your first recipe
-            </a>
+            </Link>
           </div>
         </div>
       </section>
@@ -99,7 +100,7 @@ export default async function HomePage() {
           <SectionHeading icon={<Globe className="w-4 h-4 text-yellow-brand" />} title="Browse by category" />
           <div className="mt-4 grid grid-cols-4 sm:grid-cols-8 gap-3">
             {GENRES.map((g) => (
-              <a
+              <Link
                 key={g.slug}
                 href={`/explore?tag=${g.slug}`}
                 className="flex flex-col items-center gap-2 p-3 rounded-xl border border-border bg-card hover:border-yellow-brand hover:bg-yellow-subtle dark:hover:bg-yellow-muted transition-all duration-150 group"
@@ -110,7 +111,7 @@ export default async function HomePage() {
                 <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors">
                   {g.label}
                 </span>
-              </a>
+              </Link>
             ))}
           </div>
         </section>

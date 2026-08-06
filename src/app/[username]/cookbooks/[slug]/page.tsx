@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { RecipeCard } from "@/components/RecipeCard";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { BookOpen, Users, Plus } from "lucide-react";
+import { BookOpen, Plus } from "lucide-react";
 import type { RecipeCardData } from "@/lib/types";
 
 interface Props {

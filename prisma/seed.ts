@@ -3770,7 +3770,7 @@ async function main() {
               unit: ing.unit,
               preparation: ing.preparation,
               order: i,
-              isOptional: (ing as any).isOptional ?? false,
+              isOptional: (ing as { isOptional?: boolean }).isOptional ?? false,
             },
           });
         }
@@ -3858,7 +3858,7 @@ async function main() {
                 unit: ing.unit,
                 preparation: ing.preparation,
                 order: i,
-                isOptional: (ing as any).isOptional ?? false,
+                isOptional: (ing as { isOptional?: boolean }).isOptional ?? false,
               },
             });
           }

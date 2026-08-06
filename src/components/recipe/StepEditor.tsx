@@ -12,6 +12,16 @@ interface StepEditorProps {
   stepNumber: number;
 }
 
+type ToolKind = "bold" | "italic" | "code" | "bullet" | "numbered";
+
+const TOOLS: { kind: ToolKind; icon: React.ReactNode; title: string }[] = [
+  { kind: "bold",     icon: <Bold className="w-3.5 h-3.5" />,        title: "Bold (Ctrl+B)" },
+  { kind: "italic",   icon: <Italic className="w-3.5 h-3.5" />,      title: "Italic" },
+  { kind: "code",     icon: <Code className="w-3.5 h-3.5" />,        title: "Inline code" },
+  { kind: "bullet",   icon: <List className="w-3.5 h-3.5" />,        title: "Bullet list" },
+  { kind: "numbered", icon: <ListOrdered className="w-3.5 h-3.5" />, title: "Numbered list" },
+];
+
 // Very lightweight markdown renderer for preview
 function renderMarkdown(text: string): React.ReactNode {
   const lines = text.split("\n");
@@ -130,13 +140,15 @@ export function StepEditor({ value, onChange, placeholder, stepNumber }: StepEdi
     }, 0);
   };
 
-  const TOOLS = [
-    { icon: <Bold className="w-3.5 h-3.5" />, title: "Bold (Ctrl+B)", action: () => insertAt("**", "**", "bold text") },
-    { icon: <Italic className="w-3.5 h-3.5" />, title: "Italic", action: () => insertAt("*", "*", "italic text") },
-    { icon: <Code className="w-3.5 h-3.5" />, title: "Inline code", action: () => insertAt("`", "`", "code") },
-    { icon: <List className="w-3.5 h-3.5" />, title: "Bullet list", action: () => insertLine("- ") },
-    { icon: <ListOrdered className="w-3.5 h-3.5" />, title: "Numbered list", action: () => insertLine("1. ") },
-  ];
+  const applyTool = (kind: ToolKind) => {
+    switch (kind) {
+      case "bold":     insertAt("**", "**", "bold text"); break;
+      case "italic":   insertAt("*", "*", "italic text"); break;
+      case "code":     insertAt("`", "`", "code"); break;
+      case "bullet":   insertLine("- "); break;
+      case "numbered": insertLine("1. "); break;
+    }
+  };
 
   return (
     <div className="flex-1 border border-border rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-yellow-brand">
@@ -146,12 +158,12 @@ export function StepEditor({ value, onChange, placeholder, stepNumber }: StepEdi
           Step {stepNumber}
         </span>
         <div className="w-px h-4 bg-border mx-1" />
-        {TOOLS.map((t, i) => (
+        {TOOLS.map((t) => (
           <button
-            key={i}
+            key={t.kind}
             type="button"
             title={t.title}
-            onMouseDown={(e) => { e.preventDefault(); t.action(); }}
+            onMouseDown={(e) => { e.preventDefault(); applyTool(t.kind); }}
             className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
             {t.icon}

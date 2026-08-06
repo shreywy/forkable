@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useEffect, useCallback, useSyncExternalStore } from "react";
 
 type Theme = "dark" | "light";
 
@@ -20,19 +20,34 @@ export function useTheme() {
   return useContext(ThemeContext);
 }
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("dark");
+const THEME_KEY = "forkable-theme";
+const THEME_EVENT = "forkable-theme-change";
 
-  // Read stored preference on mount
-  useEffect(() => {
-    const stored = localStorage.getItem("forkable-theme") as Theme | null;
-    if (stored === "light" || stored === "dark") {
-      setThemeState(stored);
-    } else if (window.matchMedia("(prefers-color-scheme: light)").matches) {
-      setThemeState("light");
-    }
-    // else keep "dark" default
-  }, []);
+function subscribe(cb: () => void) {
+  window.addEventListener(THEME_EVENT, cb);
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === THEME_KEY) cb();
+  };
+  window.addEventListener("storage", onStorage);
+  return () => {
+    window.removeEventListener(THEME_EVENT, cb);
+    window.removeEventListener("storage", onStorage);
+  };
+}
+
+function getSnapshot(): Theme {
+  const stored = localStorage.getItem(THEME_KEY);
+  if (stored === "light" || stored === "dark") return stored;
+  return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+}
+
+// Server render (and the hydration pass) always assumes dark, the app default.
+function getServerSnapshot(): Theme {
+  return "dark";
+}
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   // Apply class whenever theme changes
   useEffect(() => {
@@ -41,10 +56,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     root.classList.toggle("light", theme === "light");
   }, [theme]);
 
-  const setTheme = (t: Theme) => {
-    setThemeState(t);
-    localStorage.setItem("forkable-theme", t);
-  };
+  const setTheme = useCallback((t: Theme) => {
+    localStorage.setItem(THEME_KEY, t);
+    window.dispatchEvent(new Event(THEME_EVENT));
+  }, []);
 
   return (
     <ThemeContext.Provider value={{ theme, resolvedTheme: theme, setTheme }}>

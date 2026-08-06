@@ -111,6 +111,13 @@ export default function CookModePage() {
   const [recipeData, setRecipeData] = useState<ApiRecipe | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [componentReady, setComponentReady] = useState<Record<string, boolean | null>>({});
+  const [phase, setPhase] = useState<Phase>("preflight");
+  const [currentStep, setCurrentStep] = useState(0);
+  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
+  const [timerSeconds, setTimerSeconds] = useState<number | null>(null);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [tempUnit, setTempUnit] = useState<"F" | "C">("F");
 
   useEffect(() => {
     fetch(`/api/recipes/${params.username}/${params.recipe}`)
@@ -119,7 +126,15 @@ export default function CookModePage() {
         return res.json();
       })
       .then((data) => {
-        if (data) setRecipeData(data as ApiRecipe);
+        if (data) {
+          const recipe = data as ApiRecipe;
+          setRecipeData(recipe);
+          const subs = (recipe.components ?? []).filter(
+            (c) => c.type === "FOLDER" && c.steps.length > 0,
+          );
+          setComponentReady(Object.fromEntries(subs.map((c) => [c.name, null])));
+          if (subs.length === 0) setPhase("cooking");
+        }
         setLoading(false);
       })
       .catch(() => { setNotFound(true); setLoading(false); });
@@ -129,32 +144,6 @@ export default function CookModePage() {
   const subComponents = (recipeData?.components ?? []).filter(
     (c) => c.type === "FOLDER" && c.steps.length > 0,
   );
-
-  const hasSubComponents = subComponents.length > 0;
-
-  const [componentReady, setComponentReady] = useState<Record<string, boolean | null>>({});
-
-  // Re-initialise componentReady when data loads
-  useEffect(() => {
-    if (subComponents.length > 0) {
-      setComponentReady(Object.fromEntries(subComponents.map((c) => [c.name, null])));
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recipeData]);
-
-  const [phase, setPhase] = useState<Phase>("preflight");
-  const [currentStep, setCurrentStep] = useState(0);
-  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
-  const [timerSeconds, setTimerSeconds] = useState<number | null>(null);
-  const [timerRunning, setTimerRunning] = useState(false);
-  const [tempUnit, setTempUnit] = useState<"F" | "C">("F");
-
-  // Once data loads without sub-components, jump straight to cooking
-  useEffect(() => {
-    if (recipeData && !hasSubComponents) {
-      setPhase("cooking");
-    }
-  }, [recipeData, hasSubComponents]);
 
   const allAnswered = subComponents.every((c) => componentReady[c.name] !== null);
 

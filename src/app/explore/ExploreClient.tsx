@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useMemo, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useLocalStorage } from "@/lib/use-local-storage";
 import { RecipeCard } from "@/components/RecipeCard";
 import type { RecipeCardData } from "@/lib/types";
 import {
@@ -65,17 +66,22 @@ const DIET_OPTIONS = ["Vegan", "Vegetarian", "Gluten-free", "Dairy-free", "Nut-f
 type ExploreTab = "recipes" | "ingredients";
 
 export function ExploreClient({ recipes, cookbooks, featuredCooks, allIngredients, pantryIngredientIds: initialPantryIds, isLoggedIn }: ExploreClientProps) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [exploreTab, setExploreTab] = useState<ExploreTab>("recipes");
 
   const [includedTags, setIncludedTags] = useState<Set<string>>(new Set());
   const [excludedTags, setExcludedTags] = useState<Set<string>>(new Set());
 
-  const [query, setQuery] = useState(searchParams.get("q") ?? "");
-  useEffect(() => {
-    const q = searchParams.get("q");
-    if (q) setQuery(q);
-  }, [searchParams]);
+  // Keep the search box in sync when the URL's ?q= changes (navbar submits).
+  // Guarded setState-during-render is React's recommended derived-state pattern.
+  const urlQuery = searchParams.get("q");
+  const [query, setQuery] = useState(urlQuery ?? "");
+  const [lastUrlQuery, setLastUrlQuery] = useState(urlQuery);
+  if (urlQuery !== lastUrlQuery) {
+    setLastUrlQuery(urlQuery);
+    if (urlQuery) setQuery(urlQuery);
+  }
 
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState(SORT_OPTIONS[0]);
@@ -83,30 +89,36 @@ export function ExploreClient({ recipes, cookbooks, featuredCooks, allIngredient
 
   const [ingredientQuery, setIngredientQuery] = useState("");
 
-  // Persist fridge selections to localStorage so they survive page reloads
-  const [selectedIngredients, setSelectedIngredients] = useState<Set<string>>(new Set());
-
-  // Hydrate from localStorage after mount (avoids SSR mismatch)
-  useEffect(() => {
+  // Fridge selections persist in localStorage (SSR-safe via useLocalStorage)
+  const [fridgeRaw, setFridgeRaw] = useLocalStorage("forkable-fridge");
+  const selectedIngredients = useMemo(() => {
     try {
-      const saved = localStorage.getItem("forkable-fridge");
-      if (saved) setSelectedIngredients(new Set(JSON.parse(saved) as string[]));
-    } catch { /* ignore parse errors */ }
-  }, []);
-
-  // Sync to localStorage whenever selections change
-  useEffect(() => {
-    try {
-      localStorage.setItem("forkable-fridge", JSON.stringify([...selectedIngredients]));
-    } catch { /* ignore quota errors */ }
-  }, [selectedIngredients]);
+      return new Set(fridgeRaw ? (JSON.parse(fridgeRaw) as string[]) : []);
+    } catch {
+      return new Set<string>();
+    }
+  }, [fridgeRaw]);
+  const setSelectedIngredients = useCallback(
+    (next: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+      let prev: Set<string>;
+      try {
+        const saved = localStorage.getItem("forkable-fridge");
+        prev = new Set(saved ? (JSON.parse(saved) as string[]) : []);
+      } catch {
+        prev = new Set();
+      }
+      const resolved = typeof next === "function" ? next(prev) : next;
+      setFridgeRaw(JSON.stringify([...resolved]));
+    },
+    [setFridgeRaw],
+  );
 
   // ── Pantry state ───────────────────────────────────────────────────────────
   const [pantryIds, setPantryIds] = useState<Set<string>>(initialPantryIds);
 
   const handlePantryToggle = async (e: React.MouseEvent, ingredientId: string) => {
     e.stopPropagation();
-    if (!isLoggedIn) { window.location.href = "/login"; return; }
+    if (!isLoggedIn) { router.push("/login"); return; }
     const inPantry = pantryIds.has(ingredientId);
     // Optimistic update
     setPantryIds((prev) => {

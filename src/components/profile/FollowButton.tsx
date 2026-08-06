@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { UserPlus, UserCheck, Loader2 } from "lucide-react";
 
 interface Props {
@@ -18,12 +19,12 @@ export function FollowButton({ username, isOwnProfile, initialIsFollowing = fals
 
   if (isOwnProfile) {
     return (
-      <a
+      <Link
         href="/settings"
         className="mt-4 w-full h-8 rounded-lg border border-border bg-background hover:bg-muted text-sm font-medium transition-colors flex items-center justify-center"
       >
         Edit profile
-      </a>
+      </Link>
     );
   }
 

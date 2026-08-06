@@ -799,7 +799,6 @@ function AddCommentForm({
   currentUser?: { id: string; username: string; displayName: string; avatarUrl?: string | null } | null;
   onAdded: (tt: TasteTestData) => void;
 }) {
-  const router = useRouter();
   const [body, setBody] = useState("");
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);

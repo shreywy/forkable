@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import Link from "next/link";
 import { RecipeCard } from "@/components/RecipeCard";
 import { Compass, Loader2 } from "lucide-react";
 import type { RecipeCardData } from "@/lib/types";
@@ -104,10 +105,10 @@ export function DiscoverFeed({ initialRecipes, initialSkip }: Props) {
       {!hasMore && !loading && recipes.length > 0 && (
         <div className="mt-8 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
           <Loader2 className="w-3.5 h-3.5 opacity-30" />
-          You&apos;ve seen all {recipes.length} recipes — try{" "}
-          <a href="/explore" className="text-yellow-brand hover:underline">
+          You&apos;ve seen all {recipes.length} recipes. Try{" "}
+          <Link href="/explore" className="text-yellow-brand hover:underline">
             Explore
-          </a>{" "}
+          </Link>{" "}
           for filters &amp; search
         </div>
       )}
