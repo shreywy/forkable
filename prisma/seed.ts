@@ -4127,6 +4127,50 @@ async function main() {
   }
   console.log(`    ${4 + moreTasteTests.length} taste tests`);
 
+  // 10.5 Suggestion taste tests (PR-style) with mergeable ingredient diffs.
+  // The diff targets a real ingredient of the recipe so "Merge" works live.
+  const SUGGESTION_SPECS: { recipeKey: string; authorKey: string; factor: number; note: string }[] = [
+    { recipeKey: "marco_cucina/cacio-e-pepe", authorKey: "chef_alex", factor: 1.5, note: "Tried this side by side. The extra amount rounds out the sauce without making it heavy." },
+    { recipeKey: "kenji_noodles/shoyu-ramen", authorKey: "raj_spice", factor: 2, note: "Doubling deepens the broth noticeably. Worth it if you have the time." },
+    { recipeKey: "sarah_bakes/brown-butter-chocolate-chip-cookies", authorKey: "vivi_verde", factor: 0.75, note: "A little less lets the brown butter flavor come through more clearly." },
+    { recipeKey: "raj_spice/chicken-biryani", authorKey: "maite_mx", factor: 1.25, note: "A modest bump balances the spice level for larger crowds." },
+    { recipeKey: "chef_alex/coq-au-vin", authorKey: "marco_cucina", factor: 1.5, note: "More gives the braise the body it deserves. Tested twice." },
+    { recipeKey: "maite_mx/guacamole", authorKey: "tex_bbq", factor: 2, note: "Trust me on this one. Double it. You will not go back." },
+  ];
+  let suggestionCount = 0;
+  for (const s of SUGGESTION_SPECS) {
+    const recipeId = recipeIds[s.recipeKey];
+    const authorId = userIds[s.authorKey];
+    if (!recipeId || !authorId) continue;
+    const ci = await prisma.componentIngredient.findFirst({
+      where: { component: { recipeId }, amount: { not: null } },
+      orderBy: { order: "asc" },
+      include: { ingredient: { select: { name: true } } },
+    });
+    if (!ci || ci.amount === null) continue;
+    const newAmount = Math.round(ci.amount * s.factor * 100) / 100;
+    const unitSuffix = ci.unit ? ` ${ci.unit}` : "";
+    await prisma.tasteTest.create({
+      data: {
+        recipeId,
+        authorId,
+        type: "SUGGESTION",
+        status: "OPEN",
+        title: `Adjust the ${ci.ingredient.name}`,
+        body: s.note,
+        diff: [
+          {
+            ingredient: ci.ingredient.name,
+            from: `${ci.amount}${unitSuffix}`,
+            to: `${newAmount}${unitSuffix}`,
+          },
+        ],
+      },
+    });
+    suggestionCount++;
+  }
+  console.log(`    ${suggestionCount} open suggestions with diffs`);
+
   // 11. Correct denormalized counts to match actual data
   console.log("\n  Correcting denormalized counts...");
   const allRecipes = await prisma.recipe.findMany({ select: { id: true } });
