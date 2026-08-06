@@ -194,6 +194,42 @@ UPSTASH_REDIS_REST_TOKEN="AXxxx"</code></pre>
 
   <hr class="divider" />
 
+  <!-- ANTHROPIC -->
+  <section id="anthropic">
+    <h2><span class="badge">Step 3.6</span> Anthropic API — AI Sous Chef <span class="badge optional">Optional</span></h2>
+    <p>Powers "Suggest ingredient substitutions" on recipe pages and "Suggest with AI"
+    in the new-recipe wizard, using Claude Haiku (the cheapest Claude model).
+    <strong>Fully optional</strong> — without a key the buttons simply never appear.
+    Calls are login-gated, rate-limited to 10/hour per user, and substitution results
+    are cached for 24 hours, so cost stays in pennies.</p>
+    <ol>
+      <li>Go to <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> and create an account.</li>
+      <li>Under <strong>API Keys</strong>, create a key.</li>
+      <li>Add it to <code class="inline-code">.env.local</code> and Vercel:</li>
+    </ol>
+    <pre><code># ── Anthropic API (optional) ────────────────────────────────────────
+ANTHROPIC_API_KEY="sk-ant-xxx"</code></pre>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- SENTRY -->
+  <section id="sentry">
+    <h2><span class="badge">Step 3.7</span> Sentry — Error Monitoring <span class="badge optional">Optional</span></h2>
+    <p>Captures server and client errors in production. <strong>Fully optional</strong> —
+    without a DSN, Sentry never initializes.</p>
+    <ol>
+      <li>Create a free account at <a href="https://sentry.io" target="_blank">sentry.io</a> and add a Next.js project.</li>
+      <li>Copy the DSN from Project Settings → Client Keys.</li>
+      <li>Add to <code class="inline-code">.env.local</code> and Vercel:</li>
+    </ol>
+    <pre><code># ── Sentry (optional) ───────────────────────────────────────────────
+SENTRY_DSN="https://xxx@xxx.ingest.sentry.io/xxx"
+NEXT_PUBLIC_SENTRY_DSN="https://xxx@xxx.ingest.sentry.io/xxx"</code></pre>
+  </section>
+
+  <hr class="divider" />
+
   <!-- ENV -->
   <section id="env">
     <h2><span class="badge">Step 4</span> Environment Variables</h2>

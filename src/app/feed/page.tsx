@@ -246,7 +246,7 @@ export default async function FeedPage() {
 
             {allEvents.length === 0 ? (
               <div className="text-center py-20 text-muted-foreground text-sm">
-                Nothing in your feed yet — follow some cooks to see their activity here.
+                Nothing in your feed yet - follow some cooks to see their activity here.
               </div>
             ) : (
               <div className="space-y-3">

@@ -4,15 +4,15 @@
 
 **Version control for recipes.**
 
-Think GitHub — but for cooks. Fork recipes, commit tweaks, open Taste Tests (pull requests), and cook step-by-step.
+Think GitHub - but for cooks. Fork recipes, commit tweaks, diff versions, blame a step back to whoever wrote it, and open Taste Tests (pull requests) with one-click merge.
 
+[![CI](https://github.com/shreywy/forkable/actions/workflows/ci.yml/badge.svg)](https://github.com/shreywy/forkable/actions/workflows/ci.yml)
 [![Next.js](https://img.shields.io/badge/Next.js_16-black?logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS_v4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)](https://neon.tech)
 [![Prisma](https://img.shields.io/badge/Prisma_v5-2D3748?logo=prisma&logoColor=white)](https://prisma.io)
-[![NextAuth](https://img.shields.io/badge/NextAuth_v5-purple)](https://authjs.dev)
-[![Cloudflare R2](https://img.shields.io/badge/Cloudflare_R2-F38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/r2)
+[![Vitest](https://img.shields.io/badge/Vitest-6E9F18?logo=vitest&logoColor=white)](https://vitest.dev)
 
 ![Forkable homepage](public/screenshots/homepage.png)
 
@@ -30,9 +30,13 @@ Every git concept maps to something in the kitchen:
 | README | Hero image + story |
 | Folders | Components (`/bolognese-sauce`, `/bechamel`) |
 | Files | `ingredients.json` + `instructions.md` |
-| Commit | Tweak — save with a message |
-| Fork | Remix — copy to your profile |
-| Pull Request | Taste Test — suggest changes with a visual diff |
+| Commit | Tweak - save with a message and a full content snapshot |
+| Diff | Structural diff between any two tweaks (ingredients, steps, tags, fields) |
+| Revert | Restore a prior tweak as a new commit |
+| Blame | Every step and ingredient traced to the tweak that last touched it |
+| Fork | Remix - copy to your profile |
+| Pull Request | Taste Test - suggest changes with a visual diff, merge with one click |
+| `git log` | Tweaks tab - full version history per recipe |
 
 ---
 
@@ -42,14 +46,14 @@ Every git concept maps to something in the kitchen:
 <tr>
 <td width="50%">
 
-**Recipe page** — GitHub-style file tree, macros panel, sidebar stats
+**Recipe page** - GitHub-style file tree, macros panel, sidebar stats
 
 ![Recipe page](public/screenshots/recipe-page.png)
 
 </td>
 <td width="50%">
 
-**Profile page** — gradient banner, pinned recipes, follow stats
+**Profile page** - gradient banner, pinned recipes, follow stats
 
 ![Profile page](public/screenshots/profile-page.png)
 
@@ -58,14 +62,14 @@ Every git concept maps to something in the kitchen:
 <tr>
 <td width="50%">
 
-**Cook mode** — pre-flight sub-component check ("Do you already have the bechamel?"), merged step queue with timer detection and F/C toggle
+**Cook mode** - pre-flight sub-component check ("Do you already have the bechamel?"), merged step queue with timer detection and F/C toggle
 
 ![Cook mode](public/screenshots/cook-mode.png)
 
 </td>
 <td width="50%">
 
-**Recipe import** — extracts schema.org JSON-LD from recipe URLs. Works with BBC Good Food, Bon Appetit, RecipeTin Eats and more. No LLM, no paid APIs.
+**Recipe import** - extracts schema.org JSON-LD from recipe URLs. Works with BBC Good Food, Bon Appetit, RecipeTin Eats and more. No LLM, no paid APIs.
 
 ![Import page](public/screenshots/homepage.png)
 
@@ -75,26 +79,96 @@ Every git concept maps to something in the kitchen:
 
 ---
 
+## Architecture
+
+```
+                     ┌──────────────────────────┐
+                     │   Next.js 16 App Router   │
+                     │  Server Components + RSC  │
+                     └─────────────┬─────────────┘
+                                    │
+        ┌───────────────┬──────────┼──────────┬───────────────┐
+        │                │          │          │               │
+   Server Actions   Route Handlers  │     Service Worker   Middleware
+   (Zod-validated)   (REST-style)   │      (offline cook)   (auth)
+        │                │          │
+        └────────┬───────┘          │
+                  ▼                  ▼
+           ┌────────────┐    ┌──────────────┐
+           │   Prisma    │    │   Upstash    │
+           │  (21 models)│    │Redis (opt-in)│
+           └──────┬──────┘    │ rate limit + │
+                  │            │    cache     │
+                  ▼            └──────────────┘
+           ┌────────────┐
+           │Neon Postgres│  full-text search (tsvector + GIN)
+           │  (serverless)│  recipe/ingredient/similarity SQL
+           └────────────┘
+
+   External (all optional, env-gated):
+   Cloudflare R2 (images) · OpenFoodFacts (nutrition) ·
+   Anthropic Claude Haiku (substitutions) · Sentry (errors)
+```
+
+Every external integration degrades gracefully when its env var is absent - Upstash rate limiting falls back to an in-memory sliding window, the AI sous chef button never renders, Sentry never initializes. The app is fully usable, unauthenticated, with nothing but `DATABASE_URL` set.
+
+---
+
+## Feature Tour
+
+### Git-depth version control
+- **Full content snapshots** on every tweak (`RecipeVersion.snapshot`), not just a diff record
+- **Structural diff engine** - custom LCS-based algorithm diffs ingredients, steps, tags, and scalar fields between any two versions; word-level diff highlights exactly what changed inside a reworded step
+- **Compare page** (`/[user]/[recipe]/compare/[from]...[to]`) renders the diff GitHub-style: green/red ingredient rows, inline word highlighting on modified steps
+- **One-click restore** - revert to any prior tweak; the restore itself becomes a new version with real +/- stats
+- **Blame view** - every step and ingredient in the current recipe traced back to the tweak (and cook) that introduced it
+- **Taste Test merge** - PR-style suggestions apply their diff directly to the recipe's ingredients and record a version credited to the *suggester*, not the recipe owner
+
+### Search & discovery
+- **PostgreSQL full-text search** - generated `tsvector` column (name/description/story, weighted) + GIN index, ranked with `ts_rank` and `websearch_to_tsquery`
+- **Ctrl+K command palette** - debounced live search across recipes and cooks, arrow-key navigation, quick links
+- **"You might also like"** - ingredient-overlap similarity scored in a single SQL query, cached per recipe
+
+### SEO
+- **Dynamic OG images** generated per-recipe and per-profile with `next/og` (no static asset needed)
+- **schema.org Recipe JSON-LD** on every recipe page - and because the import pipeline reads the same format from other sites, a Forkable page is itself re-importable into Forkable
+- `sitemap.xml`, `robots.txt`, per-user RSS feeds
+
+### Cooking tools
+- **Recipe scaling** - live servings stepper with kitchen-fraction-aware scaling (⅓ cup, not 0.333 cup) and metric/imperial conversion
+- **Shopping list** - add multiple recipes, ingredients merge across units (200g + 0.5lb butter → one line), persists in `localStorage`, works fully signed-out
+- **Ingredient catalog** - every ingredient used anywhere auto-joins a browsable, searchable catalog with verified macros
+
+### Analytics & AI
+- **Owner insights dashboard** - hand-rolled SVG area chart (no chart library) for 30-day views, stat tiles with 7-day deltas
+- **AI ingredient substitutions** (optional) - Claude Haiku suggests swaps on request, gated behind login, rate-limited, and cached 24h so repeat views cost nothing
+- **PWA / offline cook mode** - a hand-rolled service worker caches visited recipes so cook mode still works with no signal in the kitchen
+
+---
+
 ## Tech Stack
 
 ### Frontend
-- **Next.js 16** App Router — Server Components, Server Actions, ISR, dynamic routes
+- **Next.js 16** App Router - Server Components, Server Actions, dynamic routes, `next/og` image generation
 - **TypeScript** strict mode throughout
-- **Tailwind CSS v4** + **shadcn/ui** — custom mellow-yellow design system
-- **next-themes** — dark mode default with animated toggle
+- **Tailwind CSS v4** + **shadcn/ui** - custom mellow-yellow design system, dark mode default
+- **Vitest** - 83 unit tests across parsers, the diff engine, blame, units, search, rate limiting
 
 ### Backend & Data
-- **PostgreSQL** on [Neon.tech](https://neon.tech) — serverless with auto-suspend
-- **Prisma v5** — 15-model schema with denormalized counters (`starCount`, `forkCount`) for O(1) reads, updated atomically via `prisma.$transaction`
-- **NextAuth v5** — Google OAuth + Credentials (bcrypt, 12 rounds), JWT sessions with type-safe augmentation
-- **Cloudflare R2** — S3-compatible image storage via presigned PUT URLs
-- **OpenFoodFacts API** — free nutrition data proxy with 30-day DB caching
+- **PostgreSQL** on [Neon.tech](https://neon.tech) - serverless with auto-suspend; local dev via `docker-compose`
+- **Prisma v5** - 21-model schema, denormalized counters updated atomically in transactions, a raw-SQL migration for the generated `tsvector` search column
+- **NextAuth v5** - Google OAuth + Credentials (bcrypt), JWT sessions with type-safe augmentation
+- **Upstash Redis** (optional) - sliding-window rate limiting + query caching, transparent in-memory fallback when unset
+- **Cloudflare R2** (optional) - S3-compatible image storage via presigned PUT URLs
+- **OpenFoodFacts API** - free nutrition data proxy with caching
+- **Anthropic Claude Haiku** (optional) - ingredient substitutions and recipe enrichment, fully env-gated
+- **Sentry** (optional) - server + client error monitoring, no-op without a DSN
 
-### Notable Patterns
-- **Zero-LLM recipe import** — extracts `@type: "Recipe"` schema.org JSON-LD from recipe site HTML; handles `@graph` arrays, `HowToSection` groups, and unquoted HTML attributes
-- **Server Actions + Zod** validation on every write
-- **Deep fork transaction** — `forkRecipe()` copies all components, steps, and ingredients atomically
-- **Cook mode step merging** — detects sub-component folders, asks which you have prepped, builds a merged ordered step queue
+### Engineering
+- **GitHub Actions CI** - lint, typecheck, unit tests, production build on every push
+- **Zod** validation on every Server Action and route handler
+- **Rate limiting** on every write endpoint
+- **Service worker** for offline cook mode (stale-while-revalidate on visited pages, cache-first on hashed assets)
 
 ---
 
@@ -102,35 +176,41 @@ Every git concept maps to something in the kitchen:
 
 | Route | Description |
 |-------|-------------|
-| `/` | Homepage — trending and discover grids |
-| `/explore` | Search + tag filters + "What's in your fridge?" ingredient match engine |
+| `/` | Homepage - trending and discover grids |
+| `/explore` | Full-text search + tag filters + "What's in your fridge?" ingredient match engine |
 | `/trending` | Time-filtered leaderboards (most starred / forked / tweaked) |
 | `/feed` | Activity feed from followed cooks |
-| `/[username]` | Profile — recipes, cookbooks, forks, starred tabs |
-| `/[username]/[recipe]` | Recipe — file tree, instructions, macros, taste tests |
-| `/[username]/[recipe]/cook` | Cook mode — guided steps with sub-component pre-flight |
+| `/ingredients`, `/ingredients/[slug]` | Ingredient catalog with verified macros and usage counts |
+| `/shopping-list` | Cross-recipe shopping list, works signed-out |
+| `/[username]` | Profile - recipes, cookbooks, forks, starred tabs |
+| `/[username]/[recipe]` | Recipe - file tree, ingredients panel, instructions, macros, taste tests |
+| `/[username]/[recipe]/compare/[from]...[to]` | Structural diff between two tweaks |
+| `/[username]/[recipe]/insights` | Owner-only analytics (views chart, star/fork/taste-test deltas) |
+| `/[username]/[recipe]/cook` | Cook mode - guided steps with sub-component pre-flight, offline-capable |
 | `/[username]/[recipe]/edit` | Recipe editor with markdown toolbar and live preview |
 | `/import` | URL import (JSON-LD) + text paste fallback |
-| `/new` | New recipe wizard — tags, step editor, macro estimator |
+| `/new` | New recipe wizard - tags, step editor, AI-assisted description |
 
 ---
 
 ## Database Schema
 
-15 Prisma models across 4 domains:
+21 Prisma models:
 
 ```
-Auth:    User · Account · Session · VerificationToken
-Recipe:  Recipe · RecipeVersion · Component · Step · Ingredient · ComponentIngredient
-Social:  Star · Fork · Follow · Cookbook · CookbookRecipe
-Comms:   TasteTest · Tag · RecipeTag · Notification
+Auth:     User · Account · Session · VerificationToken
+Recipe:   Recipe · RecipeVersion · Component · Step · Ingredient · ComponentIngredient
+Social:   Star · Fork · Follow · Cookbook · CookbookRecipe
+Comms:    TasteTest · TasteTestReply · Tag · RecipeTag · Notification
+Kitchen:  PantryItem · RecipeDailyStat
 ```
 
 Key design decisions:
-- **RecipeVersion** snapshots the full recipe as JSON on every tweak (commit history)
-- **Step** has `parentStepId` for nested sub-steps and `linkedRecipeId` for cross-recipe links
+- **RecipeVersion.snapshot** stores the full recipe as JSON on every tweak - this is what makes diff, restore, and blame possible without re-deriving history
+- **Recipe.searchVector** is a Postgres generated column (weighted `tsvector` over name/description/story) with a GIN index, kept in sync by Postgres itself with zero application code
+- **Step** has `parentStepId` for nested sub-steps
 - **TasteTest** is dual-purpose: `COMMENT` (review + rating) or `SUGGESTION` (PR-style diff with merge/close)
-- Counters (`starCount`, `forkCount`, `tweakCount`) are denormalized on Recipe for O(1) reads
+- Counters (`starCount`, `forkCount`, `tweakCount`) are denormalized on Recipe for O(1) reads, always updated inside the same transaction as the underlying change
 
 ---
 
@@ -138,7 +218,7 @@ Key design decisions:
 
 ### Prerequisites
 - Node.js 20+
-- A [Neon.tech](https://neon.tech) PostgreSQL database (free tier is fine)
+- A [Neon.tech](https://neon.tech) PostgreSQL database (free tier is fine) - or run Postgres locally via Docker (see below)
 
 ### Setup
 
@@ -147,43 +227,66 @@ git clone https://github.com/shreywy/forkable.git
 cd forkable
 npm install
 cp .env.example .env.local
-# Fill in DATABASE_URL, DIRECT_URL, AUTH_SECRET in .env.local
+# Fill in DATABASE_URL, DIRECT_URL, AUTH_SECRET in .env.local - see SETUP.html for a full walkthrough
 ```
 
 ```bash
 npm run db:migrate    # push schema to Neon
-npm run db:seed       # seed 5 users + sample lasagna recipe
+npm run db:seed       # seed users, 126 recipes, taste tests, cookbooks
 npm run dev
 ```
 
-Dev credentials: `shrey@forkable.dev` / `devpassword123`
+### Local database with Docker (alternative to Neon)
+
+```bash
+npm run db:local      # starts postgres:16-alpine on localhost:5433
+cp .env.docker.example .env.local   # then re-add AUTH_SECRET etc.
+npm run db:migrate
+npm run db:seed
+```
 
 ### npm Scripts
 
 ```bash
-npm run db:migrate    # prisma migrate dev
-npm run db:push       # prisma db push (no migration file)
-npm run db:seed       # tsx prisma/seed.ts
-npm run db:studio     # prisma studio GUI
-npm run db:generate   # prisma generate
+npm run dev            # start the dev server
+npm run build           # production build
+npm test                 # run the Vitest suite
+npm run lint             # eslint
+npm run db:migrate       # prisma migrate dev
+npm run db:push          # prisma db push (no migration file)
+npm run db:seed           # tsx prisma/seed.ts
+npm run db:studio         # prisma studio GUI
+npm run db:local          # docker compose up -d (local postgres)
 ```
+
+### Environment variables
+
+See [`SETUP.html`](SETUP.html) for the full walkthrough of every service, with screenshots of where to find each key. Everything past `DATABASE_URL` / `DIRECT_URL` / `AUTH_SECRET` / `AUTH_URL` is optional:
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `DATABASE_URL`, `DIRECT_URL` | Yes | Postgres connection (pooled / direct) |
+| `AUTH_SECRET`, `AUTH_URL` | Yes | NextAuth session signing |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | No | Google OAuth sign-in |
+| `R2_*` | No | Image uploads via Cloudflare R2 |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | No | Distributed rate limiting + caching (falls back to in-memory) |
+| `ANTHROPIC_API_KEY` | No | AI ingredient substitutions (buttons hide without it) |
+| `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN` | No | Error monitoring |
+| `NEXT_PUBLIC_APP_URL` | No | Canonical URL for OG images, JSON-LD, sitemap |
 
 ---
 
-## Roadmap
+## Testing & CI
 
-- [x] 25-route full UI with dark theme and mock data
-- [x] 15-model Prisma schema + migrations
-- [x] NextAuth v5 (Google OAuth + Credentials)
-- [x] Server Actions with Zod validation
-- [x] OpenFoodFacts nutrition proxy with DB caching
-- [x] Zero-LLM recipe URL import
-- [ ] Cloudflare R2 image upload (presign endpoint built, pending bucket setup)
-- [ ] Wire all pages to real DB (homepage, recipe, profile, explore, feed)
-- [ ] Taste Test diff view
-- [ ] Real-time notifications (Pusher / SSE)
-- [ ] Ingredient catalog pages (`/ingredients/[slug]`)
-- [ ] Full Taste Test flow (comments, suggestions, merge)
+```bash
+npm test           # 83 tests: recipe parser, slug, diff engine, blame,
+                    # units/scaling, shopping-list merge, search query
+                    # sanitization, rate limiting
+npm run lint        # eslint, zero warnings
+npx tsc --noEmit    # strict typecheck
+```
+
+GitHub Actions runs all three plus a production build on every push to `main` and every pull request.
 
 ---
 
