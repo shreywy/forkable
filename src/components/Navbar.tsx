@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   Search, GitFork, Bell, Plus, ChevronDown,
-  Star, ChefHat, GitCommitHorizontal, Rss,
+  Star, ChefHat, GitCommitHorizontal, Rss, ShoppingCart,
 } from "lucide-react";
+import { useLocalStorage } from "@/lib/use-local-storage";
+import { SHOPPING_LIST_KEY } from "@/lib/shopping-list";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -50,6 +52,31 @@ const MOCK_NOTIFICATIONS = [
     unread: false,
   },
 ];
+
+function ShoppingListLink() {
+  const [listRaw] = useLocalStorage(SHOPPING_LIST_KEY);
+  let count = 0;
+  try {
+    count = listRaw ? (JSON.parse(listRaw) as unknown[]).length : 0;
+  } catch {
+    count = 0;
+  }
+
+  return (
+    <Link
+      href="/shopping-list"
+      aria-label={`Shopping list (${count} recipes)`}
+      className="relative p-2 rounded-lg text-foreground/70 hover:text-foreground hover:bg-yellow-subtle transition-colors"
+    >
+      <ShoppingCart className="w-4 h-4" />
+      {count > 0 && (
+        <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-yellow-brand text-[oklch(0.12_0_0)] text-[10px] font-bold flex items-center justify-center">
+          {count}
+        </span>
+      )}
+    </Link>
+  );
+}
 
 export function Navbar() {
   const router = useRouter();
@@ -123,6 +150,7 @@ export function Navbar() {
 
         {/* ── Right side ────────────────────────────────────────── */}
         <div className="ml-auto flex items-center gap-2">
+          <ShoppingListLink />
           {/* Logged-out state */}
           {!isLoggedIn && (
             <>

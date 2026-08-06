@@ -61,6 +61,15 @@ export async function GET(
     .flatMap((c) => c.steps)
     .map((s, i) => ({ step: i + 1, text: s.content }));
 
+  // Flat ingredient list (used by the shopping list + cook mode)
+  const ingredients = recipe.components.flatMap((c) =>
+    [...c.ingredients, ...c.children.flatMap((ch) => ch.ingredients)].map((ci) => ({
+      name: ci.ingredient.name,
+      amount: ci.amount,
+      unit: ci.unit,
+    })),
+  );
+
   return NextResponse.json({
     id: recipe.id,
     slug: recipe.slug,
@@ -82,6 +91,7 @@ export async function GET(
     updatedAt: recipe.updatedAt,
     components,
     instructions,
+    ingredients,
   });
 }
 
