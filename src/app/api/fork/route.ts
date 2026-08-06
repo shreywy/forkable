@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -9,6 +10,10 @@ export async function POST(req: Request) {
   }
 
   const userId = (session.user as { id: string }).id;
+
+  const rl = await checkRateLimit(`fork:${userId}`, { limit: 10, windowSec: 60 });
+  if (!rl.ok) return rateLimitResponse(rl.resetAt);
+
   const { sourceRecipeId } = await req.json();
   if (!sourceRecipeId) {
     return NextResponse.json({ error: "sourceRecipeId required" }, { status: 400 });

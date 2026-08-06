@@ -172,6 +172,28 @@ https://your-production-domain.vercel.app/api/auth/callback/google</code></pre>
 
   <hr class="divider" />
 
+  <!-- UPSTASH -->
+  <section id="upstash">
+    <h2><span class="badge">Step 3.5</span> Upstash Redis — Rate Limiting &amp; Cache <span class="badge optional">Optional</span></h2>
+    <p>Upstash provides serverless Redis used for API rate limiting and query caching.
+    <strong>The app works without it</strong> — an in-memory fallback kicks in automatically —
+    but on Vercel (where each serverless instance has its own memory) Redis makes limits
+    and caches shared and durable.</p>
+    <ol>
+      <li>Go to <a href="https://console.upstash.com" target="_blank">console.upstash.com</a> and sign up (free tier: 500K commands/month).</li>
+      <li>Click <strong>Create Database</strong>. Name it <code class="inline-code">forkable</code>, pick the region closest to your Vercel deployment, and choose the free plan.</li>
+      <li>On the database page, open the <strong>REST API</strong> tab and copy
+          <code class="inline-code">UPSTASH_REDIS_REST_URL</code> and
+          <code class="inline-code">UPSTASH_REDIS_REST_TOKEN</code>.</li>
+      <li>Add both to <code class="inline-code">.env.local</code> and to Vercel → Project → Settings → Environment Variables.</li>
+    </ol>
+    <pre><code># ── Upstash Redis (optional) ────────────────────────────────────────
+UPSTASH_REDIS_REST_URL="https://xxx.upstash.io"
+UPSTASH_REDIS_REST_TOKEN="AXxxx"</code></pre>
+  </section>
+
+  <hr class="divider" />
+
   <!-- ENV -->
   <section id="env">
     <h2><span class="badge">Step 4</span> Environment Variables</h2>

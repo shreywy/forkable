@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export async function GET(
   _req: Request,
@@ -26,6 +27,10 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const userId = (session.user as { id: string }).id;
+
+  const rl = await checkRateLimit(`replies:${userId}`, { limit: 15, windowSec: 60 });
+  if (!rl.ok) return rateLimitResponse(rl.resetAt);
+
   const { id } = await params;
   const { body } = await req.json();
 

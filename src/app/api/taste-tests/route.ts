@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -30,6 +31,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const userId = (session.user as { id: string }).id;
+
+  const rl = await checkRateLimit(`taste-tests:${userId}`, { limit: 15, windowSec: 60 });
+  if (!rl.ok) return rateLimitResponse(rl.resetAt);
 
   const { recipeId, type, body, rating, title, diff } = await req.json();
   if (!recipeId || !type) {

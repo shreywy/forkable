@@ -5,6 +5,7 @@ import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getR2Client } from "@/lib/r2";
 import { auth } from "@/lib/auth";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { z } from "zod";
 
 const ALLOWED_CONTENT_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"];
@@ -31,6 +32,9 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.id) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const rl = await checkRateLimit(`presign:${session.user.id}`, { limit: 20, windowSec: 60 });
+  if (!rl.ok) return rateLimitResponse(rl.resetAt);
 
   let body: unknown;
   try { body = await req.json(); } catch {

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractJsonLdRecipe } from "@/lib/recipe-parser";
+import { checkRateLimit, clientKey, rateLimitResponse } from "@/lib/rate-limit";
+import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +22,13 @@ const FETCH_HEADERS = {
 };
 
 export async function POST(req: NextRequest) {
+  const session = await auth();
+  const rl = await checkRateLimit(
+    `import:${clientKey(session?.user?.id, req)}`,
+    { limit: 5, windowSec: 60 },
+  );
+  if (!rl.ok) return rateLimitResponse(rl.resetAt);
+
   let body: { url?: string };
   try {
     body = await req.json();

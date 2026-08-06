@@ -1,10 +1,14 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   const session = await auth();
   const userId = (session?.user as { id?: string } | null)?.id;
   if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  const rl = await checkRateLimit(`follow:${userId}`, { limit: 60, windowSec: 60 });
+  if (!rl.ok) return rateLimitResponse(rl.resetAt);
 
   const { targetUsername, action } = (await request.json()) as {
     targetUsername: string;
