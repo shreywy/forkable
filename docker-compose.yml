@@ -1,0 +1,23 @@
+# Local development database - an alternative to Neon.
+# Usage: npm run db:local   (then point DATABASE_URL/DIRECT_URL at it,
+# see .env.docker.example)
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: forkable-db
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: forkable
+      POSTGRES_PASSWORD: forkable
+      POSTGRES_DB: forkable
+    volumes:
+      - forkable-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forkable"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  forkable-pgdata:

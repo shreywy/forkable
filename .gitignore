@@ -54,3 +54,4 @@ INTERVIEW_PREP.html
 
 # env example should be committed — only ignore real env files
 !.env.example
+!.env.docker.example
