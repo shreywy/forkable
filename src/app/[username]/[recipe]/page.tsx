@@ -5,11 +5,28 @@ import { RecipePageTabs } from "@/components/recipe/RecipePageTabs";
 import { computeBlame } from "@/lib/blame";
 import { getSimilarRecipes } from "@/lib/similar";
 import { SimilarRecipes } from "@/components/recipe/SimilarRecipes";
+import { recipeJsonLd, jsonLdScript } from "@/lib/jsonld";
 import type { RecipeSnapshot } from "@/lib/snapshot";
 import type { RecipePageData, FileTreeNode, TweakData, TasteTestData, RecipeCardData } from "@/lib/types";
 
 interface Props {
   params: Promise<{ username: string; recipe: string }>;
+}
+
+export async function generateMetadata({ params }: Props) {
+  const { username, recipe: recipeSlug } = await params;
+  const recipe = await prisma.recipe.findFirst({
+    where: { slug: recipeSlug, author: { username }, isPublic: true },
+    select: { name: true, description: true, author: { select: { username: true } } },
+  });
+  if (!recipe) return { title: "Recipe not found" };
+  const description =
+    recipe.description.length > 155 ? `${recipe.description.slice(0, 152)}...` : recipe.description;
+  return {
+    title: `${recipe.name} by @${recipe.author.username}`,
+    description,
+    openGraph: { title: recipe.name, description },
+  };
 }
 
 export default async function RecipePage({ params }: Props) {
@@ -278,8 +295,38 @@ export default async function RecipePage({ params }: Props) {
 
   const similarRecipes = await getSimilarRecipes(recipe.id, 4);
 
+  // schema.org Recipe structured data (round-trippable with our own importer)
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const ingredientLines = recipe.components.flatMap((c) =>
+    [...c.ingredients, ...c.children.flatMap((ch) => ch.ingredients)].map((ci) =>
+      [ci.amount, ci.unit, ci.ingredient.name].filter((x) => x !== null && x !== "").join(" "),
+    ),
+  );
+  const jsonld = recipeJsonLd({
+    name: recipe.name,
+    description: recipe.description,
+    imageUrl: recipe.imageUrl,
+    authorName: recipe.author.displayName,
+    authorUrl: `${appUrl}/${recipe.author.username}`,
+    datePublished: recipe.createdAt,
+    servings: recipe.servings,
+    ingredientLines,
+    steps: instructions.map((s) => s.text),
+    calories: recipe.calories,
+    proteinG: recipe.proteinG,
+    carbsG: recipe.carbsG,
+    fatG: recipe.fatG,
+    fiberG: recipe.fiberG,
+    starCount: recipe.starCount,
+    tags: recipe.tags.map((rt) => rt.tag.label),
+  });
+
   return (
     <div className="min-h-screen bg-background">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonld) }}
+      />
       <RecipePageTabs
         recipe={recipeData}
         tweaks={tweaks}

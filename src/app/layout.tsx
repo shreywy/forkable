@@ -19,9 +19,20 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Forkable: Version control for recipes",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
+  title: {
+    default: "Forkable: Version control for recipes",
+    template: "%s | Forkable",
+  },
   description:
     "Fork, remix, and collaborate on recipes. The friendly way to cook together.",
+  openGraph: {
+    siteName: "Forkable",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
 };
 
 export default async function RootLayout({

@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { ProfileTabs } from "@/components/profile/ProfileTabs";
 import { FollowButton } from "@/components/profile/FollowButton";
+import { profileJsonLd, jsonLdScript } from "@/lib/jsonld";
 import type { RecipeCardData, CookbookData } from "@/lib/types";
 
 // Derive a gradient banner from the user's avatar seed (deterministic per user)
@@ -63,6 +64,20 @@ function mapRecipe(r: {
 
 interface Props {
   params: Promise<{ username: string }>;
+}
+
+export async function generateMetadata({ params }: Props) {
+  const { username } = await params;
+  const user = await prisma.user.findUnique({
+    where: { username },
+    select: { displayName: true, bio: true },
+  });
+  if (!user) return { title: "Cook not found" };
+  return {
+    title: `${user.displayName} (@${username})`,
+    description: user.bio ?? `Recipes by ${user.displayName} on Forkable`,
+    alternates: { types: { "application/rss+xml": `/${username}/rss.xml` } },
+  };
 }
 
 export default async function ProfilePage({ params }: Props) {
@@ -165,8 +180,20 @@ export default async function ProfilePage({ params }: Props) {
     user.websiteUrl      && { href: user.websiteUrl, icon: <LinkIcon className="w-3.5 h-3.5" />, label: user.websiteUrl.replace(/^https?:\/\//, "") },
   ].filter(Boolean) as { href: string; icon: React.ReactNode; label: string }[];
 
+  const jsonld = profileJsonLd({
+    username: user.username,
+    displayName: user.displayName,
+    bio: user.bio,
+    avatarUrl: user.avatarUrl,
+    url: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/${user.username}`,
+  });
+
   return (
     <div className="min-h-screen bg-background">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonld) }}
+      />
       {/* ── Banner ──────────────────────────────────────────────────────────── */}
       <div className="h-32 border-b border-border" style={{ background: bannerBg }} />
 
