@@ -6,6 +6,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ClientProviders } from "@/components/ClientProviders";
+import { ServiceWorkerRegistrar } from "@/components/ServiceWorkerRegistrar";
 import { auth } from "@/lib/auth";
 
 const geistSans = Geist({
@@ -57,6 +58,7 @@ export default async function RootLayout({
             __html: `(function(){try{var t=localStorage.getItem('forkable-theme');if(t==='light'){document.documentElement.classList.remove('dark');document.documentElement.classList.add('light')}else{document.documentElement.classList.add('dark');document.documentElement.classList.remove('light')}}catch(e){}})();`,
           }}
         />
+        <ServiceWorkerRegistrar />
         <ClientProviders session={session}>
           <ThemeProvider>
             <Navbar />
