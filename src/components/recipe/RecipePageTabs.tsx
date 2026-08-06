@@ -27,6 +27,7 @@ import {
 import { FileTree } from "@/components/recipe/FileTree";
 import { BlameView } from "@/components/recipe/BlameView";
 import { IngredientsPanel, type PanelIngredient } from "@/components/recipe/IngredientsPanel";
+import { SubstitutionsCard } from "@/components/recipe/SubstitutionsCard";
 import type { BlameResult } from "@/lib/blame";
 import type { RecipePageData, TweakData, TasteTestData, TasteTestReplyData, RecipeCardData } from "@/lib/types";
 
@@ -398,6 +399,9 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts: initialTasteTsts, fo
                   }}
                 />
 
+                {/* AI ingredient substitutions (env-gated, click-to-load) */}
+                <SubstitutionsCard recipeId={recipe.id} isLoggedIn={!!currentUser} />
+
                 {/* Instructions (normal or blame view) */}
                 {recipe.instructions.length > 0 && (
                   <SectionFile
@@ -642,7 +646,7 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts: initialTasteTsts, fo
                   <p className="text-sm text-muted-foreground">
                     <span className="font-medium text-foreground">{tasteTestCount}</span> taste
                     tests {tasteTsts.filter((t) => t.type === "SUGGESTION" && t.status === "OPEN").length > 0 && (
-                      <>— <span className="text-yellow-brand font-medium">
+                      <>- <span className="text-yellow-brand font-medium">
                         {tasteTsts.filter((t) => t.type === "SUGGESTION" && t.status === "OPEN").length} open suggestions
                       </span></>
                     )}
@@ -966,7 +970,7 @@ function AddCommentForm({
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="Leave a taste test — what worked, what you'd tweak, substitutions tried..."
+            placeholder="Leave a taste test - what worked, what you'd tweak, substitutions tried..."
             rows={3}
             className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-yellow-brand/40 focus:border-yellow-brand/60 transition-colors"
           />

@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import Link from "next/link";
 import {
   ChevronRight, ChevronLeft, Plus, X, Rocket, FileJson, FileText,
-  GitFork, Image as ImageIcon, CheckCircle2, Tag, Loader2, Zap,
+  GitFork, Image as ImageIcon, CheckCircle2, Tag, Loader2, Zap, Sparkles,
 } from "lucide-react";
 import { StepEditor } from "@/components/recipe/StepEditor";
 
@@ -313,6 +313,38 @@ export default function NewRecipePage() {
     { id: uid(), text: "" },
   ]);
 
+  // AI enrichment ("Suggest with AI" on the description field)
+  const [aiAvailable, setAiAvailable] = useState(true); // optimistic; hidden on first 503
+  const [aiLoading, setAiLoading] = useState(false);
+  const handleAiSuggest = async () => {
+    if (aiLoading || !name.trim()) return;
+    setAiLoading(true);
+    try {
+      const res = await fetch("/api/ai/enrich", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          ingredients: ingredients.map((i) => i.name).filter(Boolean),
+          steps: steps.map((s) => s.text).filter(Boolean),
+        }),
+      });
+      if (res.status === 503) {
+        setAiAvailable(false);
+        return;
+      }
+      if (!res.ok) return;
+      const data = (await res.json()) as { description: string; tags: string[] };
+      setDescription(data.description);
+      setAvailableTags((prev) => [...new Set([...prev, ...data.tags])]);
+      setTags((prev) => new Set([...prev, ...data.tags]));
+    } catch {
+      /* leave fields untouched */
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   // Step 4
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [servings, setServings] = useState("");
@@ -432,7 +464,25 @@ export default function NewRecipePage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">Description</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-foreground">Description</label>
+                {aiAvailable && (
+                  <button
+                    type="button"
+                    onClick={handleAiSuggest}
+                    disabled={!name.trim() || aiLoading}
+                    title="Fill the description and tags with AI suggestions based on your recipe"
+                    className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
+                  >
+                    {aiLoading ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-3 h-3 text-yellow-brand" />
+                    )}
+                    Suggest with AI
+                  </button>
+                )}
+              </div>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
