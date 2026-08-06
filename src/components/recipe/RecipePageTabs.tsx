@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { FileTree } from "@/components/recipe/FileTree";
 import { BlameView } from "@/components/recipe/BlameView";
+import { IngredientsPanel, type PanelIngredient } from "@/components/recipe/IngredientsPanel";
 import type { BlameResult } from "@/lib/blame";
 import type { RecipePageData, TweakData, TasteTestData, TasteTestReplyData, RecipeCardData } from "@/lib/types";
 
@@ -49,9 +50,11 @@ interface Props {
   initialIsStarred?: boolean;
   /** Precomputed blame data (null when no version has a snapshot) */
   blame?: BlameResult | null;
+  /** Flat ingredient list for the scaling panel */
+  panelIngredients?: PanelIngredient[];
 }
 
-export function RecipePageTabs({ recipe, tweaks, tasteTsts: initialTasteTsts, forks, currentUser, existingForkUrl, initialIsStarred = false, blame = null }: Props) {
+export function RecipePageTabs({ recipe, tweaks, tasteTsts: initialTasteTsts, forks, currentUser, existingForkUrl, initialIsStarred = false, blame = null, panelIngredients = [] }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("recipe");
   const [showBlame, setShowBlame] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -373,6 +376,18 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts: initialTasteTsts, fo
                     ))}
                   </div>
                 </SectionFile>
+
+                {/* Ingredients with servings scaling + unit conversion */}
+                <IngredientsPanel
+                  ingredients={panelIngredients}
+                  baseServings={recipe.servings}
+                  recipe={{
+                    id: recipe.id,
+                    name: recipe.name,
+                    slug: recipe.slug,
+                    authorUsername: owner.username,
+                  }}
+                />
 
                 {/* Instructions (normal or blame view) */}
                 {recipe.instructions.length > 0 && (

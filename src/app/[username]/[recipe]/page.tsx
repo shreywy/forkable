@@ -295,6 +295,28 @@ export default async function RecipePage({ params }: Props) {
 
   const similarRecipes = await getSimilarRecipes(recipe.id, 4);
 
+  // Flat ingredient list for the scaling panel (top-level + child components)
+  const panelIngredients = recipe.components.flatMap((c) => [
+    ...c.ingredients.map((ci) => ({
+      component: c.displayName ?? c.name,
+      name: ci.ingredient.name,
+      amount: ci.amount,
+      unit: ci.unit,
+      preparation: ci.preparation,
+      isOptional: ci.isOptional,
+    })),
+    ...c.children.flatMap((ch) =>
+      ch.ingredients.map((ci) => ({
+        component: ch.displayName ?? ch.name,
+        name: ci.ingredient.name,
+        amount: ci.amount,
+        unit: ci.unit,
+        preparation: ci.preparation,
+        isOptional: ci.isOptional,
+      })),
+    ),
+  ]);
+
   // schema.org Recipe structured data (round-trippable with our own importer)
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const ingredientLines = recipe.components.flatMap((c) =>
@@ -336,6 +358,7 @@ export default async function RecipePage({ params }: Props) {
         existingForkUrl={existingForkUrl}
         blame={blame}
         initialIsStarred={isStarred}
+        panelIngredients={panelIngredients}
       />
       <div className="max-w-[1280px] mx-auto px-4 pb-10">
         <SimilarRecipes recipes={similarRecipes} />
