@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { RecipePageTabs } from "@/components/recipe/RecipePageTabs";
+import { computeBlame } from "@/lib/blame";
+import type { RecipeSnapshot } from "@/lib/snapshot";
 import type { RecipePageData, FileTreeNode, TweakData, TasteTestData, RecipeCardData } from "@/lib/types";
 
 interface Props {
@@ -165,6 +167,24 @@ export default async function RecipePage({ params }: Props) {
     instructions,
   };
 
+  // Blame: walk every snapshotted version oldest -> newest
+  const blameVersions = await prisma.recipeVersion.findMany({
+    where: { recipeId: recipe.id },
+    orderBy: { createdAt: "asc" },
+    include: { author: { select: { username: true, displayName: true, avatarUrl: true } } },
+  });
+  const blame = computeBlame(
+    blameVersions
+      .filter((v) => v.snapshot !== null)
+      .map((v) => ({
+        id: v.id,
+        message: v.message,
+        createdAt: v.createdAt,
+        author: v.author,
+        snapshot: v.snapshot as unknown as RecipeSnapshot,
+      })),
+  );
+
   // Tweaks (recipe versions / commits)
   const tweaks: TweakData[] = recipe.versions.map((v) => ({
     id: v.id,
@@ -263,6 +283,7 @@ export default async function RecipePage({ params }: Props) {
         forks={forks}
         currentUser={currentUser}
         existingForkUrl={existingForkUrl}
+        blame={blame}
         initialIsStarred={isStarred}
       />
     </div>

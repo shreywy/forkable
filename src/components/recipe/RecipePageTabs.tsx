@@ -25,6 +25,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { FileTree } from "@/components/recipe/FileTree";
+import { BlameView } from "@/components/recipe/BlameView";
+import type { BlameResult } from "@/lib/blame";
 import type { RecipePageData, TweakData, TasteTestData, TasteTestReplyData, RecipeCardData } from "@/lib/types";
 
 type Tab = "recipe" | "tweaks" | "forks" | "taste-tests";
@@ -45,10 +47,13 @@ interface Props {
   /** If the current user already forked this recipe, the URL of their fork */
   existingForkUrl?: string | null;
   initialIsStarred?: boolean;
+  /** Precomputed blame data (null when no version has a snapshot) */
+  blame?: BlameResult | null;
 }
 
-export function RecipePageTabs({ recipe, tweaks, tasteTsts: initialTasteTsts, forks, currentUser, existingForkUrl, initialIsStarred = false }: Props) {
+export function RecipePageTabs({ recipe, tweaks, tasteTsts: initialTasteTsts, forks, currentUser, existingForkUrl, initialIsStarred = false, blame = null }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("recipe");
+  const [showBlame, setShowBlame] = useState(false);
   const [copied, setCopied] = useState(false);
   const [forking, setForking] = useState(false);
   const [forkCount, setForkCount] = useState(recipe.forkCount);
@@ -369,22 +374,48 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts: initialTasteTsts, fo
                   </div>
                 </SectionFile>
 
-                {/* Instructions */}
+                {/* Instructions (normal or blame view) */}
                 {recipe.instructions.length > 0 && (
                   <SectionFile
                     icon={<ChefHat className="w-3.5 h-3.5" />}
-                    filename="instructions.md"
+                    filename={showBlame ? "instructions.md · blame" : "instructions.md"}
+                    rightSlot={
+                      blame ? (
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            onClick={() => setShowBlame(false)}
+                            title="Normal view"
+                            aria-pressed={!showBlame}
+                            className={`p-1 rounded transition-colors ${!showBlame ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setShowBlame(true)}
+                            title="Blame view: who last changed each line"
+                            aria-pressed={showBlame}
+                            className={`p-1 rounded transition-colors ${showBlame ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                          >
+                            <GitCommitHorizontal className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : undefined
+                    }
                   >
-                    <ol className="space-y-4">
-                      {recipe.instructions.map((s) => (
-                        <li key={s.step} className="flex gap-4">
-                          <span className="shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-yellow-brand text-[oklch(0.12_0_0)] text-xs font-bold mt-0.5">
-                            {s.step}
-                          </span>
-                          <p className="text-sm text-foreground leading-relaxed">{s.text}</p>
-                        </li>
-                      ))}
-                    </ol>
+                    {showBlame && blame ? (
+                      <BlameView blame={blame} />
+                    ) : (
+                      <ol className="space-y-4">
+                        {recipe.instructions.map((s) => (
+                          <li key={s.step} className="flex gap-4">
+                            <span className="shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-yellow-brand text-[oklch(0.12_0_0)] text-xs font-bold mt-0.5">
+                              {s.step}
+                            </span>
+                            <p className="text-sm text-foreground leading-relaxed">{s.text}</p>
+                          </li>
+                        ))}
+                      </ol>
+                    )}
                   </SectionFile>
                 )}
 
@@ -609,7 +640,7 @@ export function RecipePageTabs({ recipe, tweaks, tasteTsts: initialTasteTsts, fo
                   )}
                   {tasteTsts.map((tt) =>
                     tt.type === "SUGGESTION" ? (
-                      <SuggestionCard key={tt.id} tt={tt} currentUser={currentUser} />
+                      <SuggestionCard key={tt.id} tt={tt} currentUser={currentUser} isOwner={isOwnRecipe} />
                     ) : (
                       <CommentCard key={tt.id} tt={tt} currentUser={currentUser} />
                     ),
@@ -1050,7 +1081,35 @@ function ReplyThread({
   );
 }
 
-function SuggestionCard({ tt, currentUser }: { tt: TasteTestData; currentUser?: { id: string; username: string; displayName: string; avatarUrl?: string | null } | null }) {
+function SuggestionCard({ tt, currentUser, isOwner = false }: { tt: TasteTestData; currentUser?: { id: string; username: string; displayName: string; avatarUrl?: string | null } | null; isOwner?: boolean }) {
+  const router = useRouter();
+  const [resolving, setResolving] = useState<"merge" | "close" | null>(null);
+  const [resolveError, setResolveError] = useState<string | null>(null);
+
+  const handleResolve = async (action: "merge" | "close") => {
+    if (resolving) return;
+    if (
+      action === "merge" &&
+      !window.confirm(
+        "Merge this suggestion? The proposed ingredient changes will be applied to the recipe and recorded as a tweak credited to the suggester.",
+      )
+    ) {
+      return;
+    }
+    setResolving(action);
+    setResolveError(null);
+    try {
+      const { mergeSuggestion, closeSuggestion } = await import("@/lib/actions/tasteTests");
+      const res = action === "merge" ? await mergeSuggestion(tt.id) : await closeSuggestion(tt.id);
+      if (res.error) setResolveError(res.error);
+      else router.refresh();
+    } catch {
+      setResolveError("Something went wrong. Please try again.");
+    } finally {
+      setResolving(null);
+    }
+  };
+
   const statusColor =
     tt.status === "OPEN"
       ? "text-green-500 bg-green-500/10 border-green-500/20"
@@ -1084,17 +1143,28 @@ function SuggestionCard({ tt, currentUser }: { tt: TasteTestData; currentUser?: 
             </span>
           </div>
         </div>
-        {tt.status === "OPEN" && (
+        {tt.status === "OPEN" && isOwner && (
           <div className="flex gap-2 shrink-0">
-            <button className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md bg-green-500/10 hover:bg-green-500/20 text-green-600 dark:text-green-400 text-xs font-medium transition-colors border border-green-500/20">
-              <Check className="w-3 h-3" /> Merge
+            <button
+              onClick={() => handleResolve("merge")}
+              disabled={resolving !== null}
+              className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md bg-green-500/10 hover:bg-green-500/20 text-green-600 dark:text-green-400 text-xs font-medium transition-colors border border-green-500/20 disabled:opacity-60"
+            >
+              {resolving === "merge" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} Merge
             </button>
-            <button className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md bg-muted hover:bg-muted/80 text-muted-foreground text-xs font-medium transition-colors">
-              <X className="w-3 h-3" /> Close
+            <button
+              onClick={() => handleResolve("close")}
+              disabled={resolving !== null}
+              className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md bg-muted hover:bg-muted/80 text-muted-foreground text-xs font-medium transition-colors disabled:opacity-60"
+            >
+              {resolving === "close" ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />} Close
             </button>
           </div>
         )}
       </div>
+      {resolveError && (
+        <p className="px-4 pb-2 text-[11px] text-red-500">{resolveError}</p>
+      )}
 
       {tt.diff && (
         <div className="border-t border-border font-mono text-xs">
