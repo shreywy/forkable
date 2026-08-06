@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { buildSnapshot, countUnits, type RecipeSnapshot } from "@/lib/snapshot";
+import { diffSnapshots } from "@/lib/diff";
+import { fetchSnapshotSource } from "@/lib/snapshot-db";
+import type { Prisma } from "@prisma/client";
 
 export async function GET(
   _req: Request,
@@ -175,14 +179,26 @@ export async function PUT(
       }
     }
 
-    // 4. Create RecipeVersion (tweak commit)
+    // 4. Create RecipeVersion (tweak commit) with a content snapshot,
+    //    diffed against the previous version for accurate +/- stats
+    const source = await fetchSnapshotSource(tx, recipe.id);
+    const snapshot = buildSnapshot(source!);
+    const prevVersion = await tx.recipeVersion.findFirst({
+      where: { recipeId: recipe.id },
+      orderBy: { createdAt: "desc" },
+      select: { snapshot: true },
+    });
+    const prevSnapshot = (prevVersion?.snapshot ?? null) as RecipeSnapshot | null;
+    const diff = prevSnapshot ? diffSnapshots(prevSnapshot, snapshot) : null;
+
     await tx.recipeVersion.create({
       data: {
         recipeId: recipe.id,
         authorId: userId,
         message: body.tweakMessage.trim(),
-        additions: body.components.reduce((s, c) => s + c.ingredients.length + c.steps.length, 0),
-        deletions: 0,
+        additions: diff?.additions ?? countUnits(snapshot),
+        deletions: diff?.deletions ?? 0,
+        snapshot: snapshot as unknown as Prisma.InputJsonValue,
       },
     });
   });

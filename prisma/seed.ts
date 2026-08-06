@@ -5,8 +5,11 @@
  * Run: npm run db:seed
  */
 
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { buildSnapshot, countUnits } from "../src/lib/snapshot";
+import { diffSnapshots } from "../src/lib/diff";
+import { fetchSnapshotSource } from "../src/lib/snapshot-db";
 
 const prisma = new PrismaClient();
 
@@ -3777,13 +3780,16 @@ async function main() {
       }
     }
 
-    // Initial version
+    // Initial version with a full content snapshot
+    const snapSource = await fetchSnapshotSource(prisma, recipe.id);
+    const snapshot = buildSnapshot(snapSource!);
     await prisma.recipeVersion.create({
       data: {
         recipeId: recipe.id,
         authorId,
         message: "Initial commit",
-        additions: r.components.reduce((s, c) => s + c.steps.length, 0),
+        additions: countUnits(snapshot),
+        snapshot: snapshot as unknown as Prisma.InputJsonValue,
       },
     });
 
@@ -3866,17 +3872,34 @@ async function main() {
       }
     }
 
-    // Fork record + version
+    // Fork record + two versions: the inherited state, then the fork's tweak,
+    // so every fork has a meaningful version compare out of the box.
     await prisma.fork.create({
       data: { userId: authorId, recipeId: forkedRecipe.id, sourceId },
+    });
+    const sourceSnapSource = await fetchSnapshotSource(prisma, sourceId);
+    const forkSnapSource = await fetchSnapshotSource(prisma, forkedRecipe.id);
+    const sourceSnap = buildSnapshot(sourceSnapSource!);
+    const forkSnap = buildSnapshot(forkSnapSource!);
+    const forkDiff = diffSnapshots(sourceSnap, forkSnap);
+    await prisma.recipeVersion.create({
+      data: {
+        recipeId: forkedRecipe.id,
+        authorId,
+        message: "Initial commit (forked)",
+        additions: countUnits(sourceSnap),
+        snapshot: sourceSnap as unknown as Prisma.InputJsonValue,
+        createdAt: new Date(Date.now() - 3 * 24 * 3600 * 1000),
+      },
     });
     await prisma.recipeVersion.create({
       data: {
         recipeId: forkedRecipe.id,
         authorId,
         message: f.tweakMessage,
-        additions: 2,
-        deletions: 1,
+        additions: forkDiff.additions,
+        deletions: forkDiff.deletions,
+        snapshot: forkSnap as unknown as Prisma.InputJsonValue,
       },
     });
 

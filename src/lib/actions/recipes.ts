@@ -6,6 +6,11 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { toSlug } from "@/lib/slug";
+import { buildSnapshot, countUnits, type RecipeSnapshot } from "@/lib/snapshot";
+import { diffSnapshots } from "@/lib/diff";
+import { fetchSnapshotSource } from "@/lib/snapshot-db";
+import { ensureTagTx, ensureIngredientTx } from "@/lib/catalog";
+import type { Prisma } from "@prisma/client";
 
 // ── Schemas ────────────────────────────────────────────────────────────────────
 
@@ -40,24 +45,6 @@ const CreateRecipeSchema = z.object({
 export type CreateRecipeInput = z.infer<typeof CreateRecipeSchema>;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-async function ensureTag(name: string) {
-  const slug = toSlug(name);
-  return prisma.tag.upsert({
-    where: { name: slug },
-    update: { useCount: { increment: 1 } },
-    create: { name: slug, label: name, isGlobal: false },
-  });
-}
-
-async function ensureIngredient(name: string) {
-  const slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-");
-  return prisma.ingredient.upsert({
-    where: { slug },
-    update: {},
-    create: { slug, name: name.toLowerCase(), aliases: [name] },
-  });
-}
 
 // ── Actions ───────────────────────────────────────────────────────────────────
 
@@ -95,7 +82,7 @@ export async function createRecipe(input: CreateRecipeInput) {
 
     // 2. Tags
     for (const tagName of tags) {
-      const tag = await ensureTag(tagName);
+      const tag = await ensureTagTx(tx, tagName);
       await tx.recipeTag.create({
         data: { recipeId: r.id, tagId: tag.id },
       });
@@ -128,7 +115,7 @@ export async function createRecipe(input: CreateRecipeInput) {
       // Ingredients
       for (let ii = 0; ii < comp.ingredients.length; ii++) {
         const ing = comp.ingredients[ii];
-        const ingredient = await ensureIngredient(ing.name);
+        const ingredient = await ensureIngredientTx(tx, ing.name);
         await tx.componentIngredient.create({
           data: {
             componentId:  component.id,
@@ -142,13 +129,16 @@ export async function createRecipe(input: CreateRecipeInput) {
       }
     }
 
-    // 4. Initial commit
+    // 4. Initial commit with a full content snapshot
+    const source = await fetchSnapshotSource(tx, r.id);
+    const snapshot = buildSnapshot(source!);
     await tx.recipeVersion.create({
       data: {
         recipeId: r.id,
         authorId: session.user.id,
         message:  "Initial commit",
-        additions: components.reduce((a, c) => a + c.steps.length + c.ingredients.length, 0),
+        additions: countUnits(snapshot),
+        snapshot: snapshot as unknown as Prisma.InputJsonValue,
       },
     });
 
@@ -194,13 +184,26 @@ export async function createTweak(recipeId: string, message: string) {
   if (!recipe) return { error: "Recipe not found" };
   if (recipe.authorId !== session.user.id) return { error: "Not authorised" };
 
+  // Snapshot the current content and diff against the previous version
+  const source = await fetchSnapshotSource(prisma, recipeId);
+  const snapshot = buildSnapshot(source!);
+  const prevVersion = await prisma.recipeVersion.findFirst({
+    where: { recipeId },
+    orderBy: { createdAt: "desc" },
+    select: { snapshot: true },
+  });
+  const prevSnapshot = (prevVersion?.snapshot ?? null) as RecipeSnapshot | null;
+  const diff = prevSnapshot ? diffSnapshots(prevSnapshot, snapshot) : null;
+
   await prisma.$transaction([
     prisma.recipeVersion.create({
       data: {
         recipeId,
         authorId: session.user.id,
         message: message.trim(),
-        additions: 1,
+        additions: diff?.additions ?? countUnits(snapshot),
+        deletions: diff?.deletions ?? 0,
+        snapshot: snapshot as unknown as Prisma.InputJsonValue,
       },
     }),
     prisma.recipe.update({
