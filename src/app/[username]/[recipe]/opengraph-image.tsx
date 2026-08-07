@@ -126,7 +126,6 @@ export default async function OgImage({
           >
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
               {recipe.author.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={recipe.author.avatarUrl}
                   alt=""
