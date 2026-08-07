@@ -162,31 +162,21 @@ export function ExploreClient({ recipes, cookbooks, featuredCooks, allIngredient
     }
   };
 
-  // ── Tag click handlers ─────────────────────────────────────────────────────
+  // ── Tag click handler: cycles neutral → include → exclude → neutral ────────
   const handleTagClick = (slug: string) => {
-    setIncludedTags((prev) => {
-      const next = new Set(prev);
-      if (next.has(slug)) {
-        next.delete(slug);
-      } else {
-        next.add(slug);
-        setExcludedTags((ex) => { const n = new Set(ex); n.delete(slug); return n; });
-      }
-      return next;
-    });
-  };
-
-  const handleTagDoubleClick = (slug: string) => {
-    setExcludedTags((prev) => {
-      const next = new Set(prev);
-      if (next.has(slug)) {
-        next.delete(slug);
-      } else {
-        next.add(slug);
-        setIncludedTags((inc) => { const n = new Set(inc); n.delete(slug); return n; });
-      }
-      return next;
-    });
+    const included = includedTags.has(slug);
+    const excluded = excludedTags.has(slug);
+    if (!included && !excluded) {
+      // neutral -> include
+      setIncludedTags((prev) => new Set(prev).add(slug));
+    } else if (included) {
+      // include -> exclude
+      setIncludedTags((prev) => { const n = new Set(prev); n.delete(slug); return n; });
+      setExcludedTags((prev) => new Set(prev).add(slug));
+    } else {
+      // exclude -> neutral
+      setExcludedTags((prev) => { const n = new Set(prev); n.delete(slug); return n; });
+    }
   };
 
   const clearAllTags = () => { setIncludedTags(new Set()); setExcludedTags(new Set()); };
@@ -401,8 +391,7 @@ export function ExploreClient({ recipes, cookbooks, featuredCooks, allIngredient
                 <button
                   key={tag.slug}
                   onClick={() => handleTagClick(tag.slug)}
-                  onDoubleClick={() => handleTagDoubleClick(tag.slug)}
-                  title="Click to include · Double-click to exclude"
+                  title="Click to cycle: include, then exclude, then off"
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors select-none ${
                     included
                       ? "bg-yellow-brand border-yellow-brand text-[oklch(0.12_0_0)]"
@@ -427,7 +416,7 @@ export function ExploreClient({ recipes, cookbooks, featuredCooks, allIngredient
             )}
           </div>
           <p className="text-[11px] text-muted-foreground mb-4">
-            Click to include · Double-click to exclude
+            Click a tag to cycle: include, then exclude, then off
           </p>
 
           {/* ── Filters panel ─────────────────────────────────────────────── */}

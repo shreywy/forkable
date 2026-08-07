@@ -1,153 +1,70 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  Bell, Star, GitFork, ChefHat, GitCommitHorizontal,
-  Check, Filter, Inbox,
+  Bell, Star, GitFork, ChefHat, GitMerge, X, UserPlus, AtSign,
+  Check, Filter, Inbox, Loader2,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { timeAgo, type NotificationItem, type NotificationType } from "@/components/NotificationsDropdown";
 
-type NotifType = "star" | "fork" | "taste-test" | "tweak" | "follow";
-type Filter = "all" | "unread" | NotifType;
+type FilterId = "all" | "unread" | NotificationType;
 
-interface Notification {
-  id: string;
-  type: NotifType;
-  text: string;
-  subtext?: string;
-  actor: { username: string; displayName: string; avatarUrl: string };
-  link: string;
-  time: string;
-  unread: boolean;
-}
-
-const NOTIFICATIONS: Notification[] = [
-  {
-    id: "1",
-    type: "star",
-    text: "nonna_rosa starred your Tahini Chocolate Chip Cookies",
-    actor: { username: "nonna_rosa", displayName: "Nonna Rosa", avatarUrl: "https://api.dicebear.com/9.x/lorelei/svg?seed=nonna_rosa" },
-    link: "/shrey/tahini-chocolate-chip-cookies",
-    time: "2m ago",
-    unread: true,
-  },
-  {
-    id: "2",
-    type: "fork",
-    text: "gluten_free_gary forked your Miso Banana Bread",
-    subtext: "Created: Miso Banana Bread (GF)",
-    actor: { username: "gluten_free_gary", displayName: "Gluten-Free Gary", avatarUrl: "https://api.dicebear.com/9.x/lorelei/svg?seed=gary" },
-    link: "/shrey/miso-banana-bread",
-    time: "1h ago",
-    unread: true,
-  },
-  {
-    id: "3",
-    type: "taste-test",
-    text: "vegan_vivienne left a taste test on your Greek Yogurt Pancakes",
-    subtext: '"These are incredible - suggest adding lemon zest to brighten the flavour"',
-    actor: { username: "vegan_vivienne", displayName: "Vivienne Plant", avatarUrl: "https://api.dicebear.com/9.x/lorelei/svg?seed=vivienne" },
-    link: "/shrey/greek-yogurt-pancakes",
-    time: "3h ago",
-    unread: false,
-  },
-  {
-    id: "4",
-    type: "tweak",
-    text: "kenji_tokyo tweaked your Tahini Chocolate Chip Cookies",
-    subtext: "Reduced sugar by 20% and added sea salt flakes on top",
-    actor: { username: "kenji_tokyo", displayName: "Kenji Tokyo", avatarUrl: "https://api.dicebear.com/9.x/lorelei/svg?seed=kenji" },
-    link: "/shrey/tahini-chocolate-chip-cookies",
-    time: "1d ago",
-    unread: false,
-  },
-  {
-    id: "5",
-    type: "star",
-    text: "vegan_vivienne starred your Miso Banana Bread",
-    actor: { username: "vegan_vivienne", displayName: "Vivienne Plant", avatarUrl: "https://api.dicebear.com/9.x/lorelei/svg?seed=vivienne" },
-    link: "/shrey/miso-banana-bread",
-    time: "2d ago",
-    unread: false,
-  },
-  {
-    id: "6",
-    type: "follow",
-    text: "kenji_tokyo started following you",
-    actor: { username: "kenji_tokyo", displayName: "Kenji Tokyo", avatarUrl: "https://api.dicebear.com/9.x/lorelei/svg?seed=kenji" },
-    link: "/kenji_tokyo",
-    time: "3d ago",
-    unread: false,
-  },
-  {
-    id: "7",
-    type: "taste-test",
-    text: "nonna_rosa suggested a change to your Miso Banana Bread",
-    subtext: '"Try folding in toasted walnuts - they pair wonderfully with miso"',
-    actor: { username: "nonna_rosa", displayName: "Nonna Rosa", avatarUrl: "https://api.dicebear.com/9.x/lorelei/svg?seed=nonna_rosa" },
-    link: "/shrey/miso-banana-bread",
-    time: "4d ago",
-    unread: false,
-  },
-  {
-    id: "8",
-    type: "fork",
-    text: "vegan_vivienne forked your Greek Yogurt Pancakes",
-    subtext: "Created: Greek Yogurt Pancakes (Vegan)",
-    actor: { username: "vegan_vivienne", displayName: "Vivienne Plant", avatarUrl: "https://api.dicebear.com/9.x/lorelei/svg?seed=vivienne" },
-    link: "/shrey/greek-yogurt-pancakes",
-    time: "5d ago",
-    unread: false,
-  },
-  {
-    id: "9",
-    type: "star",
-    text: "kenji_tokyo starred your Greek Yogurt Pancakes",
-    actor: { username: "kenji_tokyo", displayName: "Kenji Tokyo", avatarUrl: "https://api.dicebear.com/9.x/lorelei/svg?seed=kenji" },
-    link: "/shrey/greek-yogurt-pancakes",
-    time: "1w ago",
-    unread: false,
-  },
-];
-
-const TYPE_ICONS: Record<NotifType, React.ReactNode> = {
-  star:        <Star className="w-3.5 h-3.5 text-yellow-brand fill-yellow-brand/30" />,
-  fork:        <GitFork className="w-3.5 h-3.5 text-blue-400" />,
-  "taste-test": <ChefHat className="w-3.5 h-3.5 text-green-400" />,
-  tweak:       <GitCommitHorizontal className="w-3.5 h-3.5 text-muted-foreground" />,
-  follow:      <Bell className="w-3.5 h-3.5 text-yellow-brand" />,
+const TYPE_ICONS: Record<NotificationType, React.ReactNode> = {
+  NEW_STAR: <Star className="w-3.5 h-3.5 text-yellow-brand fill-yellow-brand/30" />,
+  NEW_FORK: <GitFork className="w-3.5 h-3.5 text-blue-400" />,
+  NEW_FOLLOWER: <UserPlus className="w-3.5 h-3.5 text-yellow-brand" />,
+  NEW_TASTE_TEST: <ChefHat className="w-3.5 h-3.5 text-green-400" />,
+  SUGGESTION_MERGED: <GitMerge className="w-3.5 h-3.5 text-green-500" />,
+  SUGGESTION_CLOSED: <X className="w-3.5 h-3.5 text-muted-foreground" />,
+  MENTION: <AtSign className="w-3.5 h-3.5 text-muted-foreground" />,
 };
 
-const FILTER_OPTIONS: { id: Filter; label: string }[] = [
-  { id: "all",        label: "All" },
-  { id: "unread",     label: "Unread" },
-  { id: "star",       label: "Stars" },
-  { id: "fork",       label: "Forks" },
-  { id: "taste-test", label: "Taste Tests" },
-  { id: "tweak",      label: "Tweaks" },
-  { id: "follow",     label: "Follows" },
+const FILTER_OPTIONS: { id: FilterId; label: string }[] = [
+  { id: "all",               label: "All" },
+  { id: "unread",            label: "Unread" },
+  { id: "NEW_STAR",          label: "Stars" },
+  { id: "NEW_FORK",          label: "Forks" },
+  { id: "NEW_TASTE_TEST",    label: "Taste Tests" },
+  { id: "SUGGESTION_MERGED", label: "Merges" },
+  { id: "NEW_FOLLOWER",      label: "Follows" },
 ];
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState(NOTIFICATIONS);
-  const [activeFilter, setActiveFilter] = useState<Filter>("all");
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState<FilterId>("all");
+
+  useEffect(() => {
+    fetch("/api/notifications?limit=50")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { notifications: NotificationItem[] } | null) => {
+        if (data) setNotifications(data.notifications);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
   const filtered = notifications.filter((n) => {
     if (activeFilter === "all") return true;
-    if (activeFilter === "unread") return n.unread;
+    if (activeFilter === "unread") return !n.read;
     return n.type === activeFilter;
   });
 
-  const unreadCount = notifications.filter((n) => n.unread).length;
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const markAllRead = () =>
-    setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+  const markAllRead = async () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    const { markAllNotificationsRead } = await import("@/lib/actions/notifications");
+    markAllNotificationsRead().catch(() => {});
+  };
 
-  const markRead = (id: string) =>
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, unread: false } : n)),
-    );
+  const markRead = async (id: string) => {
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    const { markNotificationsRead } = await import("@/lib/actions/notifications");
+    markNotificationsRead([id]).catch(() => {});
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -193,7 +110,11 @@ export default function NotificationsPage() {
         </div>
 
         {/* Notification list */}
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-20">
+            <Loader2 className="w-6 h-6 text-yellow-brand animate-spin mx-auto" />
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="text-center py-20">
             <Inbox className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
             <p className="text-sm text-muted-foreground">No notifications here.</p>
@@ -203,10 +124,10 @@ export default function NotificationsPage() {
             {filtered.map((notif) => (
               <Link
                 key={notif.id}
-                href={notif.link}
+                href={notif.href}
                 onClick={() => markRead(notif.id)}
                 className={`flex items-start gap-4 p-4 rounded-xl border transition-all hover:border-yellow-brand/50 ${
-                  notif.unread
+                  !notif.read
                     ? "border-yellow-brand/30 bg-yellow-subtle/50 dark:bg-yellow-muted/20"
                     : "border-border bg-card hover:bg-muted/30"
                 }`}
@@ -216,25 +137,20 @@ export default function NotificationsPage() {
 
                 {/* Actor avatar */}
                 <Avatar className="h-8 w-8 shrink-0">
-                  <AvatarImage src={notif.actor.avatarUrl} alt={notif.actor.displayName} />
+                  <AvatarImage src={notif.actor?.avatarUrl ?? undefined} alt={notif.actor?.displayName} />
                   <AvatarFallback className="text-[10px] bg-yellow-light">
-                    {notif.actor.displayName[0]}
+                    {(notif.actor?.displayName ?? "?")[0]}
                   </AvatarFallback>
                 </Avatar>
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-foreground leading-relaxed">{notif.text}</p>
-                  {notif.subtext && (
-                    <p className="mt-1 text-xs text-muted-foreground italic line-clamp-1">
-                      {notif.subtext}
-                    </p>
-                  )}
-                  <p className="mt-1 text-[11px] text-muted-foreground">{notif.time}</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">{timeAgo(notif.createdAt)}</p>
                 </div>
 
                 {/* Unread dot */}
-                {notif.unread && (
+                {!notif.read && (
                   <span className="shrink-0 w-2 h-2 rounded-full bg-yellow-brand mt-1.5" />
                 )}
               </Link>

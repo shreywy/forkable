@@ -6,6 +6,8 @@
 
 Think GitHub - but for cooks. Fork recipes, commit tweaks, diff versions, blame a step back to whoever wrote it, and open Taste Tests (pull requests) with one-click merge.
 
+**[Live demo →](https://fforkable.vercel.app)** &nbsp;·&nbsp; see [Live Demo vs. Local Setup](#live-demo-vs-local-setup) below for what's enabled where.
+
 [![CI](https://github.com/shreywy/forkable/actions/workflows/ci.yml/badge.svg)](https://github.com/shreywy/forkable/actions/workflows/ci.yml)
 [![Next.js](https://img.shields.io/badge/Next.js_16-black?logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
@@ -79,6 +81,24 @@ Every git concept maps to something in the kitchen:
 
 ---
 
+## Live Demo vs. Local Setup
+
+The [hosted demo](https://fforkable.vercel.app) runs on the bare minimum plus Google sign-in - everything else in the architecture diagram below is real, tested code that's simply switched off on the free-tier deployment for cost reasons. Every one of these degrades gracefully rather than erroring, by design (see `aiEnabled()` in `src/lib/ai.ts` and the fallback logic in `src/lib/rate-limit.ts` / `src/lib/cache.ts` for the pattern).
+
+| Feature | On the live demo | Locally with your own keys |
+|---|---|---|
+| Core app (recipes, forks, tweaks, diff/blame/restore, search, taste tests, cookbooks, pantry, shopping list, insights, PWA) | ✅ Fully working - needs only Postgres + `AUTH_SECRET` | ✅ Same |
+| Email/password sign-in | ✅ | ✅ |
+| Google OAuth sign-in | ✅ Configured | ✅ with your own `GOOGLE_CLIENT_ID`/`SECRET` |
+| Recipe photo upload (Cloudflare R2) | ❌ Not configured - the upload endpoint returns a clear "not configured" response instead of erroring | ✅ with `R2_*` vars - see [`SETUP.html`](SETUP.html) |
+| AI ingredient substitutions / "Suggest with AI" (Claude Haiku) | ⚠️ Visible in the UI, but explains it needs a key and to host locally instead of silently failing | ✅ with `ANTHROPIC_API_KEY` - see [Local AI setup](#local-ai-setup-claude-haiku) below |
+| Distributed rate limiting + caching (Upstash Redis) | ⚠️ Not configured - falls back to an in-memory sliding window automatically, so rate limiting still works, just per-instance rather than shared | ✅ distributed with `UPSTASH_REDIS_REST_URL`/`TOKEN` |
+| Error monitoring (Sentry) | ❌ Not configured - no effect on functionality, purely observability | ✅ with `SENTRY_DSN` |
+
+Everything in the ❌/⚠️ rows is fully implemented and tested - it's an infrastructure-cost decision, not a missing feature. Clone the repo and follow [`SETUP.html`](SETUP.html) to turn any of them on.
+
+---
+
 ## Architecture
 
 ```
@@ -141,7 +161,7 @@ Every external integration degrades gracefully when its env var is absent - Upst
 
 ### Analytics & AI
 - **Owner insights dashboard** - hand-rolled SVG area chart (no chart library) for 30-day views, stat tiles with 7-day deltas
-- **AI ingredient substitutions** (optional) - Claude Haiku suggests swaps on request, gated behind login, rate-limited, and cached 24h so repeat views cost nothing
+- **AI ingredient substitutions** (local setup only) - Claude Haiku suggests swaps on request, gated behind login, rate-limited, and cached 24h so repeat views cost nothing. Off by default on the hosted demo - see [Local AI setup](#local-ai-setup-claude-haiku)
 - **PWA / offline cook mode** - a hand-rolled service worker caches visited recipes so cook mode still works with no signal in the kitchen
 
 ---
@@ -236,6 +256,8 @@ npm run db:seed       # seed users, 126 recipes, taste tests, cookbooks
 npm run dev
 ```
 
+Every seeded user shares the password `devpassword123` (e.g. `marco@forkable.dev` / `devpassword123`) - see `prisma/seed.ts` for the full cast of usernames.
+
 ### Local database with Docker (alternative to Neon)
 
 ```bash
@@ -270,9 +292,24 @@ See [`SETUP.html`](SETUP.html) for the full walkthrough of every service, with s
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | No | Google OAuth sign-in |
 | `R2_*` | No | Image uploads via Cloudflare R2 |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | No | Distributed rate limiting + caching (falls back to in-memory) |
-| `ANTHROPIC_API_KEY` | No | AI ingredient substitutions (buttons hide without it) |
+| `ANTHROPIC_API_KEY` | No | AI ingredient substitutions - see [Local AI setup](#local-ai-setup-claude-haiku) |
 | `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN` | No | Error monitoring |
 | `NEXT_PUBLIC_APP_URL` | No | Canonical URL for OG images, JSON-LD, sitemap |
+
+### Local AI setup (Claude Haiku)
+
+The "Suggest ingredient substitutions" button on recipe pages and "Suggest with AI" in the new-recipe wizard call Claude Haiku (`claude-haiku-4-5`, the cheapest Claude model) via the Anthropic API. This is fully implemented (`src/lib/ai.ts`, `src/app/api/ai/*`) but **intentionally disabled on the hosted demo** - without a key, both buttons stay visible but explain that a local host needs to supply one, rather than silently failing.
+
+To enable it locally:
+
+1. Create a free account at [console.anthropic.com](https://console.anthropic.com) and generate an API key under **API Keys**.
+2. Add it to `.env.local`:
+   ```env
+   ANTHROPIC_API_KEY="sk-ant-xxx"
+   ```
+3. Restart `npm run dev`. Both AI buttons now work - substitutions are cached 24h per recipe and rate-limited to 10 requests/hour per user, so a few dollars of Anthropic credit goes a long way even with heavy testing.
+
+No other configuration is needed - `aiEnabled()` checks for the key at request time, so setting/unsetting it takes effect on the next request with no rebuild.
 
 ---
 

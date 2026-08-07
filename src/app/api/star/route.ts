@@ -14,17 +14,37 @@ export async function POST(req: Request) {
   const { recipeId } = await req.json();
   if (!recipeId) return NextResponse.json({ error: "recipeId required" }, { status: 400 });
 
-  await prisma.$transaction([
-    prisma.star.upsert({
-      where: { userId_recipeId: { userId, recipeId } },
-      create: { userId, recipeId },
-      update: {},
-    }),
-    prisma.recipe.update({
+  const existing = await prisma.star.findUnique({
+    where: { userId_recipeId: { userId, recipeId } },
+  });
+
+  if (!existing) {
+    const recipe = await prisma.recipe.findUnique({
       where: { id: recipeId },
-      data: { starCount: { increment: 1 } },
-    }),
-  ]);
+      select: { authorId: true },
+    });
+    if (!recipe) return NextResponse.json({ error: "Recipe not found" }, { status: 404 });
+
+    await prisma.$transaction([
+      prisma.star.create({ data: { userId, recipeId } }),
+      prisma.recipe.update({
+        where: { id: recipeId },
+        data: { starCount: { increment: 1 } },
+      }),
+    ]);
+
+    if (recipe.authorId !== userId) {
+      prisma.notification.create({
+        data: {
+          recipientId: recipe.authorId,
+          actorId: userId,
+          type: "NEW_STAR",
+          entityId: recipeId,
+          entityType: "Recipe",
+        },
+      }).catch(() => {});
+    }
+  }
 
   return NextResponse.json({ starred: true });
 }

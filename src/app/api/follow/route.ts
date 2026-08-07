@@ -30,6 +30,9 @@ export async function POST(request: Request) {
   }
 
   if (action === "follow") {
+    const existing = await prisma.follow.findUnique({
+      where: { followerId_followingId: { followerId: userId, followingId: target.id } },
+    });
     await prisma.follow.upsert({
       where: {
         followerId_followingId: {
@@ -40,6 +43,16 @@ export async function POST(request: Request) {
       create: { followerId: userId, followingId: target.id },
       update: {},
     });
+    if (!existing) {
+      prisma.notification.create({
+        data: {
+          recipientId: target.id,
+          actorId: userId,
+          type: "NEW_FOLLOWER",
+          entityType: "Follow",
+        },
+      }).catch(() => {});
+    }
   } else {
     await prisma.follow.deleteMany({
       where: { followerId: userId, followingId: target.id },

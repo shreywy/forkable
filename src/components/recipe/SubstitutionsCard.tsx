@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Loader2, ArrowRight } from "lucide-react";
+import { Sparkles, Loader2, ArrowRight, KeyRound } from "lucide-react";
 
 type Substitution = { ingredient: string; substitute: string; note: string };
 
 /**
  * "Sous Chef" substitutions: nothing is generated (or billed) until the
- * reader clicks. Hides itself when the server reports AI is not configured
- * or the viewer is logged out.
+ * reader clicks. Stays visible even when AI isn't configured (e.g. on the
+ * hosted demo, which ships without an Anthropic key) - it just explains
+ * that a local host needs to supply their own key, instead of vanishing.
  */
 export function SubstitutionsCard({
   recipeId,
@@ -17,10 +18,10 @@ export function SubstitutionsCard({
   recipeId: string;
   isLoggedIn: boolean;
 }) {
-  const [state, setState] = useState<"idle" | "loading" | "done" | "hidden">("idle");
+  const [state, setState] = useState<"idle" | "loading" | "done" | "unavailable">("idle");
   const [substitutions, setSubstitutions] = useState<Substitution[]>([]);
 
-  if (!isLoggedIn || state === "hidden") return null;
+  if (!isLoggedIn) return null;
 
   const load = async () => {
     setState("loading");
@@ -31,7 +32,7 @@ export function SubstitutionsCard({
         body: JSON.stringify({ recipeId }),
       });
       if (res.status === 503) {
-        setState("hidden"); // AI not configured on this deployment
+        setState("unavailable"); // AI not configured on this deployment
         return;
       }
       if (!res.ok) {
@@ -45,6 +46,21 @@ export function SubstitutionsCard({
       setState("idle");
     }
   };
+
+  if (state === "unavailable") {
+    return (
+      <div className="rounded-xl border border-dashed border-border bg-card px-4 py-3">
+        <p className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+          <KeyRound className="w-3.5 h-3.5 text-yellow-brand shrink-0" />
+          AI substitutions need an Anthropic API key
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          This demo doesn&apos;t ship with a key. Please host locally to use this feature -
+          see the README for setup instructions.
+        </p>
+      </div>
+    );
+  }
 
   if (state !== "done") {
     return (

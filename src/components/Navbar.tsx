@@ -4,8 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
-  Search, GitFork, Bell, Plus, ChevronDown,
-  Star, ChefHat, GitCommitHorizontal, Rss, ShoppingCart,
+  Search, GitFork, Plus, ChevronDown, ShoppingCart, Rss,
 } from "lucide-react";
 import { useLocalStorage } from "@/lib/use-local-storage";
 import { SHOPPING_LIST_KEY } from "@/lib/shopping-list";
@@ -19,39 +18,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { CommandPalette } from "@/components/CommandPalette";
+import { NotificationsDropdown } from "@/components/NotificationsDropdown";
 import { useSession, signOut } from "next-auth/react";
-
-// Mock notification data
-const MOCK_NOTIFICATIONS = [
-  {
-    id: "1",
-    icon: <Star className="w-3.5 h-3.5 text-yellow-brand" />,
-    text: "nonna_rosa starred your Tahini Cookies",
-    time: "2m ago",
-    unread: true,
-  },
-  {
-    id: "2",
-    icon: <GitFork className="w-3.5 h-3.5 text-muted-foreground" />,
-    text: "gluten_free_gary forked your Miso Banana Bread",
-    time: "1h ago",
-    unread: true,
-  },
-  {
-    id: "3",
-    icon: <ChefHat className="w-3.5 h-3.5 text-muted-foreground" />,
-    text: "vegan_vivienne left a taste test on your Greek Yogurt Pancakes",
-    time: "3h ago",
-    unread: false,
-  },
-  {
-    id: "4",
-    icon: <GitCommitHorizontal className="w-3.5 h-3.5 text-muted-foreground" />,
-    text: "kenji_tokyo tweaked your recipe",
-    time: "1d ago",
-    unread: false,
-  },
-];
 
 function ShoppingListLink() {
   const [listRaw] = useLocalStorage(SHOPPING_LIST_KEY);
@@ -93,8 +61,6 @@ export function Navbar() {
       router.push("/explore");
     }
   };
-
-  const unreadCount = MOCK_NOTIFICATIONS.filter((n) => n.unread).length;
 
   return (
     <header className="sticky top-0 z-50 bg-background nav-shadow transition-colors duration-300">
@@ -193,49 +159,7 @@ export function Navbar() {
           </DropdownMenu>
 
           {/* Notifications */}
-          <DropdownMenu>
-            <DropdownMenuTrigger className="relative flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-yellow-subtle dark:hover:bg-yellow-muted transition-colors outline-none">
-              <Bell className="w-4 h-4" />
-              {unreadCount > 0 && (
-                <span className="absolute top-1 right-1 flex items-center justify-center w-3.5 h-3.5 rounded-full bg-yellow-brand text-[oklch(0.12_0_0)] text-[9px] font-bold">
-                  {unreadCount}
-                </span>
-              )}
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80 p-0">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-                <p className="text-sm font-semibold text-foreground">Notifications</p>
-                <button className="text-xs text-yellow-brand hover:underline">
-                  Mark all read
-                </button>
-              </div>
-              <div className="divide-y divide-border max-h-80 overflow-y-auto">
-                {MOCK_NOTIFICATIONS.map((n) => (
-                  <div
-                    key={n.id}
-                    className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer ${n.unread ? "bg-yellow-subtle/50 dark:bg-yellow-muted/20" : ""}`}
-                  >
-                    <span className="shrink-0 mt-0.5">{n.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-foreground leading-relaxed">{n.text}</p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">{n.time}</p>
-                    </div>
-                    {n.unread && (
-                      <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-yellow-brand mt-1.5" />
-                    )}
-                  </div>
-                ))}
-              </div>
-              <div className="px-4 py-2.5 border-t border-border">
-                <button
-                  onClick={() => router.push("/notifications")}
-                  className="w-full text-xs text-center text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  View all notifications
-                </button>
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <NotificationsDropdown />
 
           {/* Dark / light toggle */}
           <ThemeToggle />

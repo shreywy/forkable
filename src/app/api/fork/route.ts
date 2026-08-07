@@ -184,5 +184,17 @@ export async function POST(req: Request) {
     return newRecipe;
   });
 
+  if (source.authorId !== userId) {
+    prisma.notification.create({
+      data: {
+        recipientId: source.authorId,
+        actorId: userId,
+        type: "NEW_FORK",
+        entityId: source.id,
+        entityType: "Recipe",
+      },
+    }).catch(() => {});
+  }
+
   return NextResponse.json({ url: `/${user.username}/${forked.slug}` }, { status: 201 });
 }

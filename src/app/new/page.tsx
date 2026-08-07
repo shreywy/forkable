@@ -313,8 +313,10 @@ export default function NewRecipePage() {
     { id: uid(), text: "" },
   ]);
 
-  // AI enrichment ("Suggest with AI" on the description field)
-  const [aiAvailable, setAiAvailable] = useState(true); // optimistic; hidden on first 503
+  // AI enrichment ("Suggest with AI" on the description field). Stays visible
+  // even when the key isn't configured (e.g. the hosted demo) - it just
+  // explains that a local host needs to supply their own key.
+  const [aiUnavailable, setAiUnavailable] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const handleAiSuggest = async () => {
     if (aiLoading || !name.trim()) return;
@@ -330,7 +332,7 @@ export default function NewRecipePage() {
         }),
       });
       if (res.status === 503) {
-        setAiAvailable(false);
+        setAiUnavailable(true);
         return;
       }
       if (!res.ok) return;
@@ -466,23 +468,27 @@ export default function NewRecipePage() {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-sm font-medium text-foreground">Description</label>
-                {aiAvailable && (
-                  <button
-                    type="button"
-                    onClick={handleAiSuggest}
-                    disabled={!name.trim() || aiLoading}
-                    title="Fill the description and tags with AI suggestions based on your recipe"
-                    className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
-                  >
-                    {aiLoading ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    ) : (
-                      <Sparkles className="w-3 h-3 text-yellow-brand" />
-                    )}
-                    Suggest with AI
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={handleAiSuggest}
+                  disabled={!name.trim() || aiLoading}
+                  title="Fill the description and tags with AI suggestions based on your recipe"
+                  className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
+                >
+                  {aiLoading ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3 h-3 text-yellow-brand" />
+                  )}
+                  Suggest with AI
+                </button>
               </div>
+              {aiUnavailable && (
+                <p className="mb-1.5 text-[11px] text-muted-foreground">
+                  AI suggestions need an Anthropic API key - this demo doesn&apos;t ship with one.
+                  Please host locally to use this feature (see the README).
+                </p>
+              )}
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}

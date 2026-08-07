@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
+import { AppChrome } from "@/components/AppChrome";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ClientProviders } from "@/components/ClientProviders";
 import { ServiceWorkerRegistrar } from "@/components/ServiceWorkerRegistrar";
@@ -61,9 +60,7 @@ export default async function RootLayout({
         <ServiceWorkerRegistrar />
         <ClientProviders session={session}>
           <ThemeProvider>
-            <Navbar />
-            <main className="flex-1">{children}</main>
-            <Footer />
+            <AppChrome>{children}</AppChrome>
           </ThemeProvider>
         </ClientProviders>
       </body>

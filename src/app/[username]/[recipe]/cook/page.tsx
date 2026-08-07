@@ -222,9 +222,9 @@ export default function CookModePage() {
     const needCount = subComponents.filter((c) => componentReady[c.name] === false).length;
 
     return (
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="h-screen overflow-hidden bg-background flex flex-col">
         {/* Top bar */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card shrink-0">
           <Link
             href={`/${params.username}/${params.recipe}`}
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -239,7 +239,7 @@ export default function CookModePage() {
           <div className="w-32" />
         </div>
 
-        <div className="flex-1 flex items-center justify-center p-6">
+        <div className="flex-1 flex items-center justify-center p-6 overflow-y-auto">
           <div className="w-full max-w-lg space-y-6">
             {/* Header */}
             <div className="text-center space-y-2">
@@ -398,7 +398,7 @@ export default function CookModePage() {
   });
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-screen overflow-hidden bg-background flex flex-col">
       {/* ── Top bar ────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
         <Link
